@@ -1,0 +1,122 @@
+﻿Dental Practice Chatbot: Engineering Assessment
+Overview
+This assessment evaluates a candidate's ability to rapidly build an intelligent, human-like chatbot solution for a dental practice. The test measures technical skills, prompt engineering capabilities, user experience design, and problem-solving abilities in a real-world scenario.
+Challenge Description
+Design and implement a conversational AI chatbot for a dental practice that can effectively assist patients with their needs, guide them toward booking appointments, and seamlessly handle complex scenarios.
+Submit github AND a video of you deploying/building the project and then testing. Share how you go about building it, what considerations you made and how it's working.
+Core Requirements
+1. Functional Requirements (Refer here for detailed scenarios)
+* Natural, human-like conversation capabilities
+* Support for new and existing patient workflows. 
+* Appointment scheduling and management. Ex: how to handle situations when times don’t work for a patient, handling subjective dates like later next week, early next month. 
+* Handling of complex scheduling needs (e.g., family bookings, husband wife, no insurance patients)
+* Chat Models with a free tier
+   * https://ai.google.dev/gemini-api/docs
+   * https://api-docs.deepseek.com/
+   * https://platform.openai.com/docs/api-reference/introduction 
+2. User Experience
+* Conversations should feel natural and human, not robotic
+* Chatbot should adapt tone and approach based on context
+* Interface should be intuitive and accessible to all patient demographics
+* Experience should seamlessly handle unexpected user inputs
+3. Technical Implementation
+* Database connectivity for patient records. Create a mock database with some availability. 
+* Error handling and fallback mechanisms
+* Databases with a free tier
+   * (Ideally) add a local database/JSON
+   * https://supabase.com/docs/reference
+   * https://www.cockroachlabs.com/pricing/ 
+Assessment Criteria
+Builder Mindset
+* Rapid Implementation: Ability to build a working solution quickly
+* Innovation: Creative approaches to solving the problem
+* Technical Proficiency: Effective use of appropriate technologies
+* End-to-End Ownership: Comprehensive solution addressing all aspects
+Quality & Attention to Detail
+* Conversation Design: Natural dialog flows with appropriate responses
+* Edge Case Handling: Thoughtful handling of unexpected scenarios
+* Code Quality: Well-structured, maintainable implementation
+* Documentation: Clear explanation of design decisions and architecture
+User Experience Design
+* Conversation Flow: Logical, efficient progression toward goals
+* Personality: Consistent, engaging chatbot personality
+* Accessibility: Support for different user needs and preferences
+* Visual Design: If applicable, clean and intuitive interface
+Workflow Management 
+* System Integration: Proper implementation of external tool calls
+* Staff Notification: Effective alerts and information sharing
+* Escalation Handling: Clear protocols for special cases
+* Feedback Loop: Mechanism for improvement based on interactions
+Key User Scenarios to Address:
+
+1. New Patient Registration
+   * Collecting necessary information
+      1. Full name
+      2. Phone number
+      3. Date of Birth
+      4. Insurance Name
+   * First appointment scheduling
+      1. Create some sample time slots in the database.
+      2. Schedule appointment
+      3. Appointment types:
+         1. Cleaning
+         2. General checkup
+         3. Emergency 
+            1. If emergency, get a summary of what the emergency is
+            2. Mention that you have let dental office staff know about the nature of the emergency
+2. Existing Patient Appointment
+   * Verification of patient identity
+   * Follow-up scheduling
+      1. Rescheduling appointment
+      2. Canceling appointment
+3. Complex Family Scheduling
+   * Ability to book multiple appointments for family members (for e.g. kids, spouse, etc)
+   * Coordination of timing:
+      1. Back-to-back appointments
+4. General Inquiries
+   * Insurance and payment options
+      1. Accepts all major dental insurance plans
+      2. Handling patients with no insurance - self pay options or membership/financing options available for non insurance patients
+   * Location and hours details: 
+      1. Open 8am to 6pm Mon-Sat
+5. Open-ended
+   * Feel free to add additional capabilities and functionality as you see fit! Make sure you specify these in the README/demo video.
+Submission Requirements
+1. Working Prototype
+
+   * Functional chatbot implementation
+   * Access instructions for testing
+   2. Documentation
+   * Architecture overview
+   * Technologies used
+   * Design decisions and rationale
+   * Setup and usage instructions
+   3. Code Repository
+
+      * Well-organized codebase
+      * Clear commit history
+      * README with instructions to run
+      * .env template file
+      4. Presentation: video or another sharing your demo and thinking
+
+         * Brief demo of key features
+         * Explanation of technical approach
+         * Discussion of challenges and solutions
+Evaluation Process
+         1. Initial Review: Code quality, architecture, and documentation
+         2. Functionality Testing: Testing against core scenarios
+         3. User Experience Assessment: Conversation quality and flow
+         4. Technical Interview: Discussion of design decisions and potential improvements
+Time Allocation
+Candidates should spend approximately 4-8 hours on this assessment. We value quality thinking and execution over unnecessary complexity. Feel free to use AI for assistance.
+________________
+
+
+This assessment is designed to evaluate real-world problem-solving skills in a practical context. We're looking for builders who can think critically about user needs while implementing robust technical solutions.
+Got it, I've read through the assessment. You want to add a Prioritization section to the assignment prompt that forces candidates to think like product engineers shipping under real constraints — not just "build the demo" but "what would you actually prioritize if this was going live at scale?"
+________________
+
+
+Prioritization & Scope Decisions
+This is a time-boxed assessment, but treat it as if you are shipping a production application that will power hundreds of dental locations handling 10,000+ conversations per day. You will not be able to build everything — and we don't expect you to.
+What did you prioritize, and why? Tell us which features or scenarios you chose to build first. Explain your reasoning — what is load-bearing for the core user experience vs. what is nice-to-have? How did you think about risk, failure modes, and patient impact when making those calls?
