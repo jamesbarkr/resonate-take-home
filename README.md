@@ -96,6 +96,7 @@ single booking is correct.
 - **Styling:** Tailwind CSS 4
 - **LLM:** DeepSeek V4.1 Flash via Synthetic's OpenAI-compatible API, using `@ai-sdk/openai-compatible` and the Vercel AI SDK
 - **Database:** SQLite via `better-sqlite3` and Drizzle ORM
+- **Auth:** Mock patient/staff sign-in with signed, HttpOnly HMAC session cookies
 - **Testing:** Vitest for unit/integration/scenario coverage, Playwright + axe for browser and accessibility checks
 - **Deployment:** local by default; optional hosted Postgres if a live URL is needed
 
@@ -119,6 +120,12 @@ npm run dev
 
 Open <http://localhost:3000>.
 
+Demo sign-in:
+
+- **Patient portal:** Maria Lopez · `617-555-0102` · `1990-11-30`
+- **Staff workspace:** `frontdesk@lakeside.test` / `frontdesk-demo`
+- **New patients:** start at `/chat` without an account.
+
 The seed script is deterministic and can be run repeatedly:
 
 ```bash
@@ -137,7 +144,23 @@ See `.env.example`. The important ones:
 | `LLM_MODEL` | Defaults to `hf:deepseek-ai/DeepSeek-V4.1-Flash-1017`. |
 | `DATABASE_PATH` | Local SQLite file; defaults to `./data/dental.db`. |
 | `PRACTICE_TIMEZONE` | IANA timezone used for scheduling; defaults to `America/New_York`. |
+| `SESSION_SECRET` | Signs patient/staff session cookies. Change outside local dev. |
+| `STAFF_EMAIL` | Mock staff login email. |
+| `STAFF_PASSWORD` | Mock staff login password. |
 | `STAFF_WEBHOOK_URL` | Optional Slack/email webhook for alerts. |
+
+## Sign-in and roles
+
+- **Patient portal (`/portal`):** phone + date of birth match against the
+  synthetic patient record. The session is a signed, HttpOnly cookie.
+- **Staff workspace (`/staff`):** email + password from `STAFF_EMAIL` /
+  `STAFF_PASSWORD`. Staff routes redirect to `/login?role=staff` when signed
+  out.
+- **Guest chat (`/chat`):** new patients can start a conversation without an
+  account; the assistant still verifies identity before touching an existing
+  record.
+- This is intentionally a mock auth layer. Production would use a real identity
+  provider, OTP for patients, role-based access control, and audit review.
 
 ## Scripts
 
@@ -157,8 +180,8 @@ See `.env.example`. The important ones:
 ## Testing
 
 ```bash
-npm test          # 51 Vitest tests
-npm run test:e2e  # 4 Playwright tests (install Chromium once with `npx playwright install chromium`)
+npm test          # 59 Vitest tests
+npm run test:e2e  # 6 Playwright tests (install Chromium once with `npx playwright install chromium`)
 ```
 
 Coverage includes:
@@ -172,6 +195,8 @@ Coverage includes:
   emergency alert, and insurance/no-insurance/hours inquiries.
 - Adversarial checks: missing confirmation, wrong identity, oversized input,
   rate limiting, and missing model configuration.
+- Auth checks: signed-session round trips, tamper/expiry rejection, patient and
+  staff login routes, protected-route redirects, and the portal.
 - Playwright keyboard/visibility checks and axe scans on the chat and staff pages
   (no serious or critical accessibility violations).
 
@@ -188,10 +213,11 @@ npx tsx scripts/live-emergency.ts   # emergency triage + same-day booking
 
 ```
 src/
-  app/                     Next.js routes (/, /chat, /staff, /api/*)
+  app/                     Next.js routes (/, /login, /portal, /chat, /staff, /api/*)
   components/chat/         Accessible streaming chat UI
   lib/
     agent/                 Model config, system prompt, tool contracts, tools
+    auth/                  Signed session cookies and redirect helpers
     domain/                Deterministic services, ports, shared types
     repositories/          Drizzle-backed read/write helpers
     db/                    Schema, client, migrations, seed
@@ -228,9 +254,10 @@ scripts/                   Domain smoke test and live evaluation scripts
   the model staying online.
 - **Accessibility:** semantic landmarks, labeled controls, keyboard/focus
   management, contrast, and no color-only status cues.
-- **Known limitations:** no real payments or insurance eligibility, no
-  SMS/voice, no PMS integration, single practice/timezone. These are deliberate
-  scope decisions for a 4–8 hour assessment.
+- **Known limitations:** mock auth rather than a real identity provider, no real
+  payments or insurance eligibility, no SMS/voice, no PMS integration, single
+  practice/timezone. These are deliberate scope decisions for a 4–8 hour
+  assessment.
 
 ## Demo video
 
