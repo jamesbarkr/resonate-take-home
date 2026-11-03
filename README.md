@@ -183,8 +183,8 @@ See `.env.example`. The important ones:
 ## Testing
 
 ```bash
-npm test          # 67 Vitest tests
-npm run test:e2e  # 8 Playwright tests (install Chromium once with `npx playwright install chromium`)
+npm test          # 73 Vitest tests
+npm run test:e2e  # 9 Playwright tests (install Chromium once with `npx playwright install chromium`)
 ```
 
 Coverage includes:
@@ -209,6 +209,10 @@ Coverage includes:
   labels, and structured appointment/slot data. Raw tool inputs, model-facing
   tool guidance, and reasoning parts are never rendered; the raw audit stays
   behind staff authentication.
+- Conversational convenience: availability slots are clickable, and contextual
+  yes/no chips appear for confirmation questions. Both send ordinary chat
+  messages, so the assistant still restates details and the confirmation gate
+  remains intact.
 - Playwright keyboard/visibility checks and axe scans on the chat and staff pages
   (no serious or critical accessibility violations).
 
