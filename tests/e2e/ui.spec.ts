@@ -66,6 +66,11 @@ test("patient can sign in and see the portal", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText(/Maria Lopez/i).first()).toBeVisible();
 
+  await page.goto("/chat");
+  await expect(
+    page.getByRole("heading", { name: /Hi, Maria\. I.m Ava/i }),
+  ).toBeVisible();
+
   const results = await new AxeBuilder({ page }).analyze();
   expect(seriousOrCritical(results.violations)).toEqual([]);
 });

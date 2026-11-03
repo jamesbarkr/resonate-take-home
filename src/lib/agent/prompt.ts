@@ -1,8 +1,12 @@
 import { formatInTimeZone } from "date-fns-tz";
+import type { Patient } from "@/lib/db/schema";
 import { getPracticeInfo } from "@/lib/domain/practice-info";
 import { PRACTICE_TIMEZONE } from "@/lib/domain/time";
 
-export function buildSystemPrompt(): string {
+export function buildSystemPrompt(options?: {
+  signedInPatient?: Patient;
+  household?: Patient[];
+}): string {
   const practice = getPracticeInfo();
   const now = new Date();
   const nowLabel = formatInTimeZone(
@@ -10,6 +14,31 @@ export function buildSystemPrompt(): string {
     practice.timezone || PRACTICE_TIMEZONE,
     "EEEE, MMMM d, yyyy 'at' h:mm a zzz",
   );
+
+  const signedIn = options?.signedInPatient;
+  const householdOthers = (options?.household ?? []).filter(
+    (member) => member.id !== signedIn?.id,
+  );
+  const householdSummary =
+    householdOthers.length > 0
+      ? householdOthers
+          .map(
+            (member) =>
+              `${member.fullName} (patient ID ${member.id}, DOB ${member.dateOfBirth}, insurance ${member.insuranceName ?? "self-pay"})`,
+          )
+          .join("; ")
+      : "No other household members are on file.";
+  const signedInSection = signedIn
+    ? `
+
+SIGNED-IN PATIENT
+- The patient is already signed in and verified: ${signedIn.fullName} (patient ID ${signedIn.id}).
+- Do not ask for their name, phone number, or date of birth again for their own appointments.
+- For this patient, use patientId ${signedIn.id} directly with list_appointments, book_appointment, reschedule_appointment, and cancel_appointment.
+- Still confirm the exact appointment type, provider, date, and time before any mutation.
+- Insurance on file: ${signedIn.insuranceName ?? "self-pay"}.
+- Household members: ${householdSummary}. If the request is for a family member, confirm which member and use that member's patientId. Never book one person under another person's identity.`
+    : "";
 
   return `You are Ava, the virtual front-desk assistant for ${practice.name}. You help patients book, move, or cancel dental appointments, coordinate family visits, handle urgent concerns, and answer practical questions about the practice.
 
@@ -27,7 +56,7 @@ PRACTICE FACTS (authoritative)
 - Membership: ${practice.membershipNote}
 - Financing: ${practice.financingNote}
 - Emergency guidance: ${practice.emergencyNote}
-- Accepted plans: ${practice.acceptedPlans.join(", ")}.
+- Accepted plans: ${practice.acceptedPlans.join(", ")}.${signedInSection}
 
 PERSONALITY AND TONE
 - Warm, calm, competent, and human. Sound like a thoughtful front-desk coordinator, not a script or a call-center robot.

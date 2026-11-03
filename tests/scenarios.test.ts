@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildSystemPrompt } from "@/lib/agent/prompt";
 import { bookAppointmentSchema } from "@/lib/agent/tool-contracts";
 import { createAgentTools } from "@/lib/agent/tools";
+import { patientService } from "@/lib/domain/patient-service";
 import {
   addDaysToDateString,
   practiceDateString,
@@ -231,5 +232,21 @@ describe("assessment scenarios", () => {
     expect(prompt).toContain("not a clinician");
     expect(prompt).toContain("later next week");
     expect(prompt).toContain("restate the exact appointment type");
+  });
+
+  it("passes signed-in patient and household context to the model", async () => {
+    const patient = await patientService.getById("pat_maria");
+    const household = await patientService.listHousehold("pat_maria");
+    const prompt = buildSystemPrompt({
+      signedInPatient: patient ?? undefined,
+      household,
+    });
+
+    expect(prompt).toContain("SIGNED-IN PATIENT");
+    expect(prompt).toContain("Maria Lopez");
+    expect(prompt).toContain("pat_maria");
+    expect(prompt).toContain(
+      "Do not ask for their name, phone number, or date of birth again",
+    );
   });
 });

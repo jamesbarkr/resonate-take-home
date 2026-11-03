@@ -19,11 +19,13 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionToken,
 } from "@/lib/auth/session";
+import type { Patient } from "@/lib/db/schema";
 import {
   ensureConversation,
   persistUiMessages,
   setConversationPatient,
 } from "@/lib/domain/conversation-service";
+import { patientService } from "@/lib/domain/patient-service";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const COOKIE_NAME = "dental_conversation_id";
@@ -117,8 +119,14 @@ export async function POST(request: NextRequest) {
   const session = verifySessionToken(
     request.cookies.get(SESSION_COOKIE_NAME)?.value,
   );
+  let signedInPatient: Patient | null = null;
+  let household: Patient[] = [];
   if (session?.role === "patient") {
     setConversationPatient(conversationId, session.patientId);
+    signedInPatient = await patientService.getById(session.patientId);
+    if (signedInPatient) {
+      household = await patientService.listHousehold(signedInPatient.id);
+    }
   }
   persistUiMessages(conversationId, messages);
 
@@ -128,7 +136,10 @@ export async function POST(request: NextRequest) {
     const modelMessages = await convertToModelMessages(messages);
     const result = streamText({
       model: getLanguageModel(),
-      system: buildSystemPrompt(),
+      system: buildSystemPrompt({
+        signedInPatient: signedInPatient ?? undefined,
+        household,
+      }),
       messages: modelMessages,
       tools,
       stopWhen: stepCountIs(8),
