@@ -9,6 +9,10 @@ import {
 import { useChat } from "@ai-sdk/react";
 import { conversationCompletion } from "@/lib/chat/feedback";
 import {
+  confirmationReplies,
+  slotSelectionMessage,
+} from "@/lib/chat/quick-replies";
+import {
   type FormEvent,
   type KeyboardEvent,
   useEffect,
@@ -81,7 +85,15 @@ function AppointmentCard({ value }: { value: JsonRecord }) {
   );
 }
 
-function SlotList({ value }: { value: unknown }) {
+function SlotList({
+  value,
+  onSelect,
+  disabled,
+}: {
+  value: unknown;
+  onSelect: (text: string) => void;
+  disabled: boolean;
+}) {
   if (!Array.isArray(value)) return null;
   const slots = value
     .map((slot) => asRecord(slot))
@@ -92,23 +104,38 @@ function SlotList({ value }: { value: unknown }) {
 
   return (
     <ul className="mt-3 space-y-2">
-      {slots.map((slot, index) => (
-        <li
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-          key={`${String(slot.startsAt ?? index)}`}
-        >
-          <span className="font-medium text-slate-800">
-            {typeof slot.label === "string"
-              ? slot.label
-              : "Available appointment"}
-          </span>
-        </li>
-      ))}
+      {slots.map((slot, index) => {
+        const label =
+          typeof slot.label === "string"
+            ? slot.label
+            : "Available appointment";
+        return (
+          <li key={`${String(slot.startsAt ?? index)}`}>
+            <button
+              aria-label={`Choose ${label}`}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm font-medium text-slate-800 hover:border-brand-500 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={disabled}
+              onClick={() => onSelect(slotSelectionMessage(label))}
+              type="button"
+            >
+              {label}
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function ToolPart({ part }: { part: UIMessage["parts"][number] }) {
+function ToolPart({
+  part,
+  onSelectOption,
+  disabled,
+}: {
+  part: UIMessage["parts"][number];
+  onSelectOption: (text: string) => void;
+  disabled: boolean;
+}) {
   if (!isToolUIPart(part)) return null;
 
   const toolName = part.type.startsWith("tool-")
@@ -170,7 +197,13 @@ function ToolPart({ part }: { part: UIMessage["parts"][number] }) {
             ))}
         </div>
       ) : null}
-      {output?.slots ? <SlotList value={output.slots} /> : null}
+      {output?.slots ? (
+        <SlotList
+          disabled={disabled}
+          onSelect={onSelectOption}
+          value={output.slots}
+        />
+      ) : null}
     </div>
   );
 }
@@ -276,6 +309,9 @@ export function ChatShell({ patientName }: { patientName?: string }) {
     !busy &&
     (ended ||
       (completion !== null && completion.messageId !== dismissedCompletionId));
+  const confirmation = confirmationReplies(messages);
+  const showConfirmation =
+    !busy && !ended && !showFeedback && confirmation !== null;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -474,7 +510,9 @@ export function ChatShell({ patientName }: { patientName?: string }) {
                   ) : null}
                   {message.parts.map((part, index) => (
                     <ToolPart
+                      disabled={busy}
                       key={`${message.id}-${part.type}-${index}`}
+                      onSelectOption={submitMessage}
                       part={part}
                     />
                   ))}
@@ -482,6 +520,29 @@ export function ChatShell({ patientName }: { patientName?: string }) {
               </div>
             );
           })}
+
+          {showConfirmation && confirmation ? (
+            <div
+              aria-label="Quick replies"
+              className="flex flex-wrap gap-2"
+              role="group"
+            >
+              <button
+                className="rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 hover:border-brand-500"
+                onClick={() => submitMessage(confirmation.yes)}
+                type="button"
+              >
+                {confirmation.yes}
+              </button>
+              <button
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400"
+                onClick={() => submitMessage(confirmation.no)}
+                type="button"
+              >
+                {confirmation.no}
+              </button>
+            </div>
+          ) : null}
 
           {busy ? (
             <div className="flex justify-start">
