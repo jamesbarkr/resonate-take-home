@@ -4,9 +4,9 @@ import "./globals.css";
 const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Lakeside Family Dental";
 
 export const metadata: Metadata = {
-  title: `${appName} | Patient Assistant`,
+  title: `${appName} | Boston, MA`,
   description:
-    "A conversational scheduling assistant for a dental practice, built for the Resonate AI take-home assessment.",
+    "Gentle, modern dental care for the whole family. Book cleanings, checkups, same-day emergency visits, and family appointments online.",
 };
 
 export default function RootLayout({

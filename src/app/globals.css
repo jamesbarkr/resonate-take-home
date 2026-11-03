@@ -34,10 +34,6 @@ body {
   box-sizing: border-box;
 }
 
-a {
-  color: inherit;
-}
-
 :focus-visible {
   outline: 3px solid var(--color-brand-500);
   outline-offset: 2px;
