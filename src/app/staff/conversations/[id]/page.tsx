@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
 import { getConversationDetail } from "@/lib/domain/conversation-service";
 import { formatPracticeDateTime } from "@/lib/domain/time";
 
@@ -10,6 +11,11 @@ export default async function ConversationDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await getSession();
+  if (session?.role !== "staff") {
+    redirect("/login?role=staff&next=/staff");
+  }
+
   const { id } = await params;
   const detail = getConversationDetail(id);
 
@@ -81,7 +87,7 @@ export default async function ConversationDetailPage({
               <p className="mt-1 whitespace-pre-wrap text-slate-800">
                 {message.content}
               </p>
-              <time className="mt-2 block text-xs text-slate-400">
+              <time className="mt-2 block text-xs text-slate-600">
                 {formatPracticeDateTime(message.createdAt)}
               </time>
             </article>

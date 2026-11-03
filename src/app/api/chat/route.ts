@@ -16,8 +16,13 @@ import {
 import { buildSystemPrompt } from "@/lib/agent/prompt";
 import { createAgentTools } from "@/lib/agent/tools";
 import {
+  SESSION_COOKIE_NAME,
+  verifySessionToken,
+} from "@/lib/auth/session";
+import {
   ensureConversation,
   persistUiMessages,
+  setConversationPatient,
 } from "@/lib/domain/conversation-service";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
@@ -109,6 +114,12 @@ export async function POST(request: NextRequest) {
 
   const conversationId = resolveConversationId(request);
   ensureConversation(conversationId);
+  const session = verifySessionToken(
+    request.cookies.get(SESSION_COOKIE_NAME)?.value,
+  );
+  if (session?.role === "patient") {
+    setConversationPatient(conversationId, session.patientId);
+  }
   persistUiMessages(conversationId, messages);
 
   const tools = createAgentTools(conversationId);

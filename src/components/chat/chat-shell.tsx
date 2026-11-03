@@ -212,7 +212,7 @@ function FeedbackButtons({ messageId }: { messageId: string }) {
   );
 }
 
-export function ChatShell() {
+export function ChatShell({ patientName }: { patientName?: string }) {
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/chat" }),
     [],
@@ -286,12 +286,39 @@ export function ChatShell() {
               </p>
             </div>
           </div>
-          <a
-            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
-            href="tel:6175550142"
-          >
-            Call 617-555-0142
-          </a>
+          <div className="flex items-center gap-2">
+            {patientName ? (
+              <>
+                <a
+                  className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+                  href="/portal"
+                >
+                  My portal
+                </a>
+                <form action="/api/auth/logout" method="post">
+                  <button
+                    className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+                    type="submit"
+                  >
+                    Sign out
+                  </button>
+                </form>
+              </>
+            ) : (
+              <a
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+                href="/login?role=patient"
+              >
+                Sign in
+              </a>
+            )}
+            <a
+              className="hidden rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700 sm:block"
+              href="tel:6175550142"
+            >
+              Call 617-555-0142
+            </a>
+          </div>
         </div>
       </header>
 
@@ -315,7 +342,9 @@ export function ChatShell() {
                 </div>
                 <div>
                   <h1 className="text-xl font-semibold text-brand-900">
-                    Hi, I&apos;m Ava at Lakeside Family Dental.
+                    {patientName
+                      ? `Hi, ${patientName.split(" ")[0]}. I'm Ava at Lakeside Family Dental.`
+                      : "Hi, I'm Ava at Lakeside Family Dental."}
                   </h1>
                   <p className="mt-2 text-slate-600">
                     I can help you book, move, or cancel an appointment, arrange

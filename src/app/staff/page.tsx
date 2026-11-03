@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
 import {
   acknowledgeAlert,
   getDashboardData,
@@ -28,7 +30,12 @@ const urgencyStyles: Record<string, string> = {
   low: "border-sky-200 bg-sky-50 text-sky-900",
 };
 
-export default function StaffPage() {
+export default async function StaffPage() {
+  const session = await getSession();
+  if (session?.role !== "staff") {
+    redirect("/login?role=staff&next=/staff");
+  }
+
   const data = getDashboardData();
 
   return (
@@ -46,9 +53,22 @@ export default function StaffPage() {
             chat assistant.
           </p>
         </div>
-        <p className="rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-600">
-          Demo console · synthetic patient data
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-600">
+            Staff workspace · synthetic patient data
+          </p>
+          <p className="hidden text-xs text-slate-500 sm:block">
+            Signed in as {session.name}
+          </p>
+          <form action="/api/auth/logout" method="post">
+            <button
+              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+              type="submit"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
       </header>
 
       <section
@@ -225,7 +245,7 @@ export default function StaffPage() {
                 <p className="mt-1 line-clamp-2 text-sm text-slate-600">
                   {conversation.lastMessage ?? "No messages yet."}
                 </p>
-                <time className="mt-2 block text-xs text-slate-400">
+                <time className="mt-2 block text-xs text-slate-600">
                   {formatPracticeDateTime(conversation.updatedAt)}
                 </time>
               </Link>
@@ -257,7 +277,7 @@ export default function StaffPage() {
                     key={item.id}
                   >
                     “{item.comment}”
-                    <span className="mt-1 block text-xs text-slate-400">
+                    <span className="mt-1 block text-xs text-slate-600">
                       {item.patientName ?? "Anonymous"}
                     </span>
                   </li>
