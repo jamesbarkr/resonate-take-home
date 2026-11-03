@@ -181,7 +181,7 @@ See `.env.example`. The important ones:
 
 ```bash
 npm test          # 59 Vitest tests
-npm run test:e2e  # 6 Playwright tests (install Chromium once with `npx playwright install chromium`)
+npm run test:e2e  # 7 Playwright tests (install Chromium once with `npx playwright install chromium`)
 ```
 
 Coverage includes:
@@ -197,6 +197,8 @@ Coverage includes:
   rate limiting, and missing model configuration.
 - Auth checks: signed-session round trips, tamper/expiry rejection, patient and
   staff login routes, protected-route redirects, and the portal.
+- Interaction checks: clickable controls use the pointer cursor; disabled
+  controls use not-allowed.
 - Playwright keyboard/visibility checks and axe scans on the chat and staff pages
   (no serious or critical accessibility violations).
 

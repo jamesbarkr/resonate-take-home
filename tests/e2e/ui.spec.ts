@@ -133,3 +133,33 @@ test("unknown conversation is a 404 for signed-in staff", async ({ page }) => {
   const response = await page.goto("/staff/conversations/does-not-exist");
   expect(response?.status()).toBe(404);
 });
+
+test("interactive controls use pointer, disabled controls use not-allowed", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const book = page.getByRole("link", { name: /Book an appointment/i }).first();
+  await expect(book).toBeVisible();
+  expect(
+    await book.evaluate((element) => getComputedStyle(element).cursor),
+  ).toBe("pointer");
+
+  await page.goto("/chat");
+  const quickReply = page
+    .getByRole("button", { name: /book a cleaning/i })
+    .first();
+  expect(
+    await quickReply.evaluate((element) => getComputedStyle(element).cursor),
+  ).toBe("pointer");
+
+  const send = page.getByRole("button", { name: /^Send$/ });
+  expect(
+    await send.evaluate((element) => getComputedStyle(element).cursor),
+  ).toBe("not-allowed");
+
+  await page.goto("/login?role=patient");
+  const submit = page.getByRole("button", { name: /^Sign in$/ });
+  expect(
+    await submit.evaluate((element) => getComputedStyle(element).cursor),
+  ).toBe("pointer");
+});
