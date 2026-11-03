@@ -7,6 +7,7 @@ import {
   type UIMessage,
 } from "ai";
 import { useChat } from "@ai-sdk/react";
+import { conversationCompletion } from "@/lib/chat/feedback";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -166,12 +167,20 @@ function ToolPart({ part }: { part: UIMessage["parts"][number] }) {
   );
 }
 
-function FeedbackButtons({ messageId }: { messageId: string }) {
+function ConversationFeedback({
+  messageId,
+  onContinue,
+}: {
+  messageId?: string;
+  onContinue: () => void;
+}) {
   const [rating, setRating] = useState<number | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   async function submit(value: number) {
     if (rating !== null) return;
     setRating(value);
+    setSubmitted(true);
     try {
       await fetch("/api/feedback", {
         method: "POST",
@@ -184,31 +193,54 @@ function FeedbackButtons({ messageId }: { messageId: string }) {
   }
 
   return (
-    <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-      <span>{rating === null ? "Was this helpful?" : "Thanks for the feedback."}</span>
-      <button
-        aria-label="Helpful"
-        className={`rounded-full px-2 py-1 transition hover:bg-slate-100 ${
-          rating === 1 ? "text-brand-600" : ""
-        }`}
-        disabled={rating !== null}
-        onClick={() => submit(1)}
-        type="button"
+    <section
+      aria-labelledby="conversation-feedback-heading"
+      className="rounded-3xl border border-brand-100 bg-white p-5 shadow-sm"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
+        Conversation complete
+      </p>
+      <h2
+        className="mt-1 text-lg font-semibold text-brand-900"
+        id="conversation-feedback-heading"
       >
-        👍
-      </button>
-      <button
-        aria-label="Not helpful"
-        className={`rounded-full px-2 py-1 transition hover:bg-slate-100 ${
-          rating === -1 ? "text-amber-700" : ""
-        }`}
-        disabled={rating !== null}
-        onClick={() => submit(-1)}
-        type="button"
-      >
-        👎
-      </button>
-    </div>
+        How was this experience?
+      </h2>
+      <p className="mt-1 text-sm text-slate-600">
+        Your feedback helps the practice improve the virtual front desk.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {submitted ? (
+          <p className="text-sm font-medium text-emerald-700" role="status">
+            Thanks for the feedback.
+          </p>
+        ) : (
+          <>
+            <button
+              className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+              onClick={() => submit(1)}
+              type="button"
+            >
+              👍 Helpful
+            </button>
+            <button
+              className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+              onClick={() => submit(-1)}
+              type="button"
+            >
+              👎 Not quite
+            </button>
+          </>
+        )}
+        <button
+          className="rounded-full px-3 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700"
+          onClick={onContinue}
+          type="button"
+        >
+          Continue chatting
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -219,10 +251,23 @@ export function ChatShell({ patientName }: { patientName?: string }) {
   );
   const { messages, sendMessage, status, error, stop } = useChat({ transport });
   const [input, setInput] = useState("");
+  const [ended, setEnded] = useState(false);
+  const [dismissedCompletionId, setDismissedCompletionId] = useState<
+    string | null
+  >(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const busy = status === "submitted" || status === "streaming";
+  const completion = conversationCompletion(messages);
+  const lastAssistantId = [...messages]
+    .reverse()
+    .find((message) => message.role === "assistant")?.id;
+  const feedbackMessageId = ended ? lastAssistantId : completion?.messageId;
+  const showFeedback =
+    !busy &&
+    (ended ||
+      (completion !== null && completion.messageId !== dismissedCompletionId));
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -239,7 +284,25 @@ export function ChatShell({ patientName }: { patientName?: string }) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
     setInput("");
+    setEnded(false);
     void sendMessage({ text: trimmed });
+  }
+
+  function finishConversation() {
+    setEnded(true);
+    setDismissedCompletionId(null);
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    });
+  }
+
+  function continueConversation() {
+    setEnded(false);
+    setDismissedCompletionId(completion?.messageId ?? null);
+    inputRef.current?.focus();
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -407,9 +470,6 @@ export function ChatShell({ patientName }: { patientName?: string }) {
                       part={part}
                     />
                   ))}
-                  {!isUser && text ? (
-                    <FeedbackButtons messageId={message.id} />
-                  ) : null}
                 </div>
               </div>
             );
@@ -428,6 +488,14 @@ export function ChatShell({ patientName }: { patientName?: string }) {
                 </p>
               </div>
             </div>
+          ) : null}
+
+          {showFeedback ? (
+            <ConversationFeedback
+              key={feedbackMessageId ?? "manual-finish"}
+              messageId={feedbackMessageId}
+              onContinue={continueConversation}
+            />
           ) : null}
 
           {error ? (
@@ -487,10 +555,21 @@ export function ChatShell({ patientName }: { patientName?: string }) {
               </button>
             )}
           </div>
-          <p className="px-3 pb-1 pt-1 text-[11px] text-slate-600">
-            Please don&apos;t share more personal information than needed. This
-            demo uses synthetic patient data.
-          </p>
+          <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-1">
+            <p className="text-[11px] text-slate-600">
+              Please don&apos;t share more personal information than needed.
+              This demo uses synthetic patient data.
+            </p>
+            {messages.length > 0 && !ended && !busy ? (
+              <button
+                className="shrink-0 text-[11px] font-semibold text-brand-600 hover:text-brand-700"
+                onClick={finishConversation}
+                type="button"
+              >
+                Finish chat
+              </button>
+            ) : null}
+          </div>
         </form>
       </main>
     </div>
