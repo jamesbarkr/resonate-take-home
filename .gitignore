@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+
+# next
+.next/
+out/
+next-env.d.ts
+
+# production
+build/
+dist/
+
+# local environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# local sqlite database
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/backups/
+
+# test output
+coverage/
+playwright-report/
+test-results/
+
+# internal planning artifacts
+.planning/
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
