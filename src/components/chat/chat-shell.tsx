@@ -314,11 +314,13 @@ export function ChatShell({ patientName }: { patientName?: string }) {
     !busy && !ended && !showFeedback && confirmation !== null;
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
+    const container = scrollRef.current;
+    if (!container) return;
+    const frame = requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
     });
-  }, [messages, status]);
+    return () => cancelAnimationFrame(frame);
+  }, [messages, status, ended, showFeedback, showConfirmation]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -362,7 +364,7 @@ export function ChatShell({ patientName }: { patientName?: string }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex h-dvh min-h-0 flex-col bg-slate-50">
       <a
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-brand-700 focus:shadow"
         href="#chat-main"
@@ -370,7 +372,7 @@ export function ChatShell({ patientName }: { patientName?: string }) {
         Skip to conversation
       </a>
 
-      <header className="border-b border-slate-200 bg-white">
+      <header className="shrink-0 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <a
@@ -430,12 +432,13 @@ export function ChatShell({ patientName }: { patientName?: string }) {
       </header>
 
       <main
-        className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-3 py-4 sm:px-6"
+        className="mx-auto flex w-full min-h-0 max-w-3xl flex-1 flex-col px-3 py-4 sm:px-6"
         id="chat-main"
       >
         <div
           aria-live="polite"
-          className="flex-1 space-y-4 overflow-y-auto pb-4"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pb-4"
+          data-testid="chat-scroll"
           ref={scrollRef}
         >
           {messages.length === 0 ? (
@@ -589,7 +592,7 @@ export function ChatShell({ patientName }: { patientName?: string }) {
         </div>
 
         <form
-          className="sticky bottom-0 rounded-3xl border border-slate-200 bg-white p-2 shadow-lg"
+          className="shrink-0 rounded-3xl border border-slate-200 bg-white p-2 shadow-lg"
           onSubmit={handleSubmit}
         >
           <label className="sr-only" htmlFor="chat-input">

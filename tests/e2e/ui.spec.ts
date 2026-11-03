@@ -329,6 +329,56 @@ test("clickable slots, confirmation replies, and end-of-chat feedback", async ({
   await expect(page.getByText("Was this helpful?")).toHaveCount(0);
 });
 
+test("latest message stays visible at the bottom as the chat grows", async ({
+  page,
+}) => {
+  const longText =
+    Array.from(
+      { length: 90 },
+      (_, index) => `Line ${index + 1}: a longer conversation response.`,
+    ).join("\n") + "\nLatest message marker";
+
+  await page.route("**/api/chat", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "x-vercel-ai-ui-message-stream": "v1",
+      },
+      body: uiStream([
+        { type: "start" },
+        { type: "start-step" },
+        { type: "text-start", id: "txt-long" },
+        { type: "text-delta", id: "txt-long", delta: longText },
+        { type: "text-end", id: "txt-long" },
+        { type: "finish-step" },
+        { type: "finish", finishReason: "stop" },
+      ]),
+    });
+  });
+
+  await page.goto("/chat");
+  const input = page.getByRole("textbox", {
+    name: /Message the dental assistant/i,
+  });
+  await input.fill("Give me a detailed overview");
+  await page.getByRole("button", { name: /^Send$/ }).click();
+
+  const scroll = page.getByTestId("chat-scroll");
+  await expect(scroll).toContainText("Latest message marker");
+  await expect
+    .poll(async () =>
+      scroll.evaluate(
+        (element) =>
+          Math.abs(
+            element.scrollHeight - element.clientHeight - element.scrollTop,
+          ),
+      ),
+    )
+    .toBeLessThanOrEqual(2);
+  await expect(input).toBeVisible();
+});
+
 test("interactive controls use pointer, disabled controls use not-allowed", async ({
   page,
 }) => {
