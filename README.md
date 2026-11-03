@@ -152,7 +152,10 @@ See `.env.example`. The important ones:
 ## Sign-in and roles
 
 - **Patient portal (`/portal`):** phone + date of birth match against the
-  synthetic patient record. The session is a signed, HttpOnly cookie.
+  synthetic patient record. The session is a signed, HttpOnly cookie. When a
+  patient is signed in, the assistant receives their verified profile and
+  household context, so it does not ask them to re-verify for their own
+  appointments.
 - **Staff workspace (`/staff`):** email + password from `STAFF_EMAIL` /
   `STAFF_PASSWORD`. Staff routes redirect to `/login?role=staff` when signed
   out.
@@ -180,7 +183,7 @@ See `.env.example`. The important ones:
 ## Testing
 
 ```bash
-npm test          # 59 Vitest tests
+npm test          # 66 Vitest tests
 npm run test:e2e  # 8 Playwright tests (install Chromium once with `npx playwright install chromium`)
 ```
 
@@ -200,6 +203,8 @@ Coverage includes:
 - Interaction checks: clickable controls use the pointer cursor; disabled
   controls use not-allowed; tall-viewport footers stay pinned and the login
   content stays vertically centered.
+- Feedback timing: a single end-of-conversation prompt appears only after a
+  completed booking/reschedule/cancel/escalation or an explicit Finish chat.
 - Playwright keyboard/visibility checks and axe scans on the chat and staff pages
   (no serious or critical accessibility violations).
 
