@@ -184,7 +184,7 @@ See `.env.example`. The important ones:
 
 ```bash
 npm test          # 73 Vitest tests
-npm run test:e2e  # 9 Playwright tests (install Chromium once with `npx playwright install chromium`)
+npm run test:e2e  # 10 Playwright tests (install Chromium once with `npx playwright install chromium`)
 ```
 
 Coverage includes:
@@ -213,6 +213,8 @@ Coverage includes:
   yes/no chips appear for confirmation questions. Both send ordinary chat
   messages, so the assistant still restates details and the confirmation gate
   remains intact.
+- Chat scrolling: the transcript is a fixed-height, internally scrolling pane
+  that stays pinned to the latest message as the conversation grows.
 - Playwright keyboard/visibility checks and axe scans on the chat and staff pages
   (no serious or critical accessibility violations).
 
