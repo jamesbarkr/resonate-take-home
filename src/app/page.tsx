@@ -45,7 +45,7 @@ export default function HomePage() {
       </div>
 
       <footer className="text-sm text-slate-500">
-        Phase 2 scaffold · UI and agent land in Phase 3
+        Next.js · DeepSeek tool calling · SQLite · synthetic patient data
       </footer>
     </main>
   );

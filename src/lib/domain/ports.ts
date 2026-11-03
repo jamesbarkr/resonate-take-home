@@ -10,7 +10,7 @@ import type { AppointmentTypeSlug } from "@/lib/domain/types";
  * Ports between the conversational/tool layer and the deterministic domain.
  *
  * The LLM-facing tools depend on these interfaces, not on Drizzle directly.
- * Phase 3 implements them against SQLite; a hosted Postgres adapter can replace
+ * The current implementations use SQLite; a hosted Postgres adapter can replace
  * them without changing prompts or tool contracts.
  */
 

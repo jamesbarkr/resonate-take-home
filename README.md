@@ -3,9 +3,9 @@
 A conversational scheduling assistant for a mock dental practice, built for the
 Resonate AI take-home assessment.
 
-> **Status:** Phase 2 scaffold complete. The app shell, database schema, seed
-> data, tool contracts, and repository ports are in place. The agent loop, chat
-> UI, staff console, and tests land in Phases 3–4.
+> **Status:** Complete. The patient chat, staff console, deterministic
+> scheduling layer, DeepSeek tool calling, tests, and documentation are in
+> place. The demo uses synthetic patient data only.
 
 ## What this is
 
@@ -96,7 +96,7 @@ single booking is correct.
 - **Styling:** Tailwind CSS 4
 - **LLM:** DeepSeek V4.1 Flash via Synthetic's OpenAI-compatible API, using `@ai-sdk/openai-compatible` and the Vercel AI SDK
 - **Database:** SQLite via `better-sqlite3` and Drizzle ORM
-- **Testing:** Vitest (Phase 4), Playwright for critical UI paths (Phase 4)
+- **Testing:** Vitest for unit/integration/scenario coverage, Playwright + axe for browser and accessibility checks
 - **Deployment:** local by default; optional hosted Postgres if a live URL is needed
 
 ## Setup
@@ -234,6 +234,7 @@ scripts/                   Domain smoke test and live evaluation scripts
 
 ## Demo video
 
-_To be recorded in Phase 5._ It will cover the build/deploy, the core patient
-journeys, the architecture and prioritization rationale, and the main challenges
-and trade-offs.
+The walkthrough covers the build and local setup, the core patient journeys, the
+architecture and prioritization rationale, and the main challenges and
+trade-offs. The app is seeded with synthetic data so the demo always starts from
+a known state.

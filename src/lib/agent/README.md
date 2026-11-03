@@ -30,10 +30,10 @@ concerned.
 
 | File | Purpose |
 |------|---------|
+| `model.ts` | OpenAI-compatible provider configuration (DeepSeek via Synthetic). |
 | `tool-contracts.ts` | Zod schemas for every tool argument and inferred TypeScript types. |
-| `tools.ts` (Phase 3) | AI SDK tool definitions wired to domain services. |
-| `prompt.ts` (Phase 3) | System prompt: persona, workflow, confirmation and escalation rules. |
-| `run-turn.ts` (Phase 3) | Streaming agent loop, persistence, bounded retries, fallbacks. |
+| `tools.ts` | AI SDK tool definitions wired to domain services, with audit logging. |
+| `prompt.ts` | System prompt: persona, workflow, confirmation and escalation rules. |
 
 ## Tool surface
 

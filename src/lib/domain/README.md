@@ -11,8 +11,8 @@ both go through these services; neither may mutate tables directly.
 - `SchedulingService` — availability, slot holds, book, reschedule, cancel, list.
 - `StaffNotificationService` — persist and optionally deliver staff alerts.
 
-Phase 3 implements these against SQLite. A hosted Postgres adapter should be able
-to replace the implementations without changing the tool contracts or prompts.
+The current implementations use SQLite. A hosted Postgres adapter can replace
+them without changing the tool contracts or prompts.
 
 ## Rules to enforce in implementations
 
@@ -26,7 +26,7 @@ to replace the implementations without changing the tool contracts or prompts.
   rolled back.
 - Emergency bookings reserve same-day capacity and always create a staff alert.
 
-## Error model (Phase 3)
+## Error model
 
 Services should return typed, user-safe failures rather than raw SQLite errors:
 
