@@ -162,6 +162,173 @@ test("footer and login content stay balanced on a tall viewport", async ({
   expect(Math.abs(contentCenter - availableCenter)).toBeLessThanOrEqual(2);
 });
 
+function uiStream(chunks: Array<Record<string, unknown>>): string {
+  return (
+    chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join("") +
+    "data: [DONE]\n\n"
+  );
+}
+
+test("clickable slots, confirmation replies, and end-of-chat feedback", async ({
+  page,
+}) => {
+  const slotLabel =
+    "Monday, November 9 at 8:00 AM with Priya Patel, RDH";
+  let call = 0;
+
+  await page.route("**/api/chat", async (route) => {
+    call += 1;
+
+    if (call === 1) {
+      await route.fulfill({
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+          "x-vercel-ai-ui-message-stream": "v1",
+        },
+        body: uiStream([
+          { type: "start" },
+          { type: "start-step" },
+          {
+            type: "tool-input-start",
+            toolCallId: "call-slots",
+            toolName: "get_availability",
+          },
+          {
+            type: "tool-input-available",
+            toolCallId: "call-slots",
+            toolName: "get_availability",
+            input: { appointmentType: "cleaning" },
+          },
+          {
+            type: "tool-output-available",
+            toolCallId: "call-slots",
+            output: {
+              ok: true,
+              count: 1,
+              slots: [
+                {
+                  providerId: "prov_patel",
+                  providerName: "Priya Patel, RDH",
+                  appointmentType: "cleaning",
+                  startsAt: "2026-11-09T13:00:00.000Z",
+                  endsAt: "2026-11-09T13:45:00.000Z",
+                  label: slotLabel,
+                },
+              ],
+            },
+          },
+          { type: "text-start", id: "txt-1" },
+          {
+            type: "text-delta",
+            id: "txt-1",
+            delta: "Which time would you like?",
+          },
+          { type: "text-end", id: "txt-1" },
+          { type: "finish-step" },
+          { type: "finish", finishReason: "stop" },
+        ]),
+      });
+      return;
+    }
+
+    if (call === 2) {
+      await route.fulfill({
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+          "x-vercel-ai-ui-message-stream": "v1",
+        },
+        body: uiStream([
+          { type: "start" },
+          { type: "start-step" },
+          { type: "text-start", id: "txt-2" },
+          {
+            type: "text-delta",
+            id: "txt-2",
+            delta: `I have ${slotLabel}. Should I book that for you?`,
+          },
+          { type: "text-end", id: "txt-2" },
+          { type: "finish-step" },
+          { type: "finish", finishReason: "stop" },
+        ]),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "x-vercel-ai-ui-message-stream": "v1",
+      },
+      body: uiStream([
+        { type: "start" },
+        { type: "start-step" },
+        {
+          type: "tool-input-start",
+          toolCallId: "call-book",
+          toolName: "book_appointment",
+        },
+        {
+          type: "tool-input-available",
+          toolCallId: "call-book",
+          toolName: "book_appointment",
+          input: { patientId: "pat_maria" },
+        },
+        {
+          type: "tool-output-available",
+          toolCallId: "call-book",
+          output: {
+            ok: true,
+            appointment: {
+              id: "appt_mock",
+              patientId: "pat_maria",
+              patientName: "Maria Lopez",
+              providerId: "prov_patel",
+              providerName: "Priya Patel, RDH",
+              appointmentType: "cleaning",
+              appointmentTypeName: "Cleaning",
+              startsAt: "2026-11-09T13:00:00.000Z",
+              endsAt: "2026-11-09T13:45:00.000Z",
+              status: "booked",
+              notes: null,
+              startsAtLabel: slotLabel,
+              endsAtLabel: "Monday, November 9 at 8:45 AM",
+            },
+          },
+        },
+        { type: "text-start", id: "txt-3" },
+        {
+          type: "text-delta",
+          id: "txt-3",
+          delta: "You're booked. See you Monday.",
+        },
+        { type: "text-end", id: "txt-3" },
+        { type: "finish-step" },
+        { type: "finish", finishReason: "stop" },
+      ]),
+    });
+  });
+
+  await page.goto("/chat");
+  await page
+    .getByRole("textbox", { name: /Message the dental assistant/i })
+    .fill("Show me cleaning times next week");
+  await page.getByRole("button", { name: /^Send$/ }).click();
+
+  await page
+    .getByRole("button", { name: new RegExp(`Choose ${slotLabel}`) })
+    .click();
+  await expect(page.getByText(/Let.s go with Monday, November 9/i)).toBeVisible();
+
+  await page.getByRole("button", { name: /Yes, please book it/i }).click();
+  await expect(
+    page.getByRole("heading", { name: /How was this experience/i }),
+  ).toBeVisible();
+  await expect(page.getByText("Was this helpful?")).toHaveCount(0);
+});
+
 test("interactive controls use pointer, disabled controls use not-allowed", async ({
   page,
 }) => {
