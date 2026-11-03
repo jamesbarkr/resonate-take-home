@@ -158,6 +158,33 @@ describe("agent tools", () => {
     );
   });
 
+  it("keeps model-facing guidance out of successful tool outputs", async () => {
+    const tools = createAgentTools("conv_tools_clean");
+    const { start, end } = nextWeek();
+
+    const found = await execute(tools, "find_patient", {
+      fullName: "David Johnson",
+      phone: "6175550101",
+      dateOfBirth: "1985-04-12",
+    });
+    const availability = await execute(tools, "get_availability", {
+      appointmentType: "cleaning",
+      preferredStartDate: start,
+      preferredEndDate: end,
+      limit: 1,
+    });
+    const alert = await execute(tools, "notify_staff", {
+      kind: "callback",
+      urgency: "low",
+      summary: "Patient asked for a callback about insurance.",
+    });
+
+    expect(found).not.toHaveProperty("message");
+    expect(availability).not.toHaveProperty("message");
+    expect(alert).not.toHaveProperty("message");
+    expect(alert.notified).toBe(true);
+  });
+
   it("returns safe errors for invalid bookings", async () => {
     const tools = createAgentTools("conv_tools_error");
     const { start } = nextWeek();

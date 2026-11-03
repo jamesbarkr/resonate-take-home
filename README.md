@@ -183,7 +183,7 @@ See `.env.example`. The important ones:
 ## Testing
 
 ```bash
-npm test          # 66 Vitest tests
+npm test          # 67 Vitest tests
 npm run test:e2e  # 8 Playwright tests (install Chromium once with `npx playwright install chromium`)
 ```
 
@@ -205,6 +205,10 @@ Coverage includes:
   content stays vertically centered.
 - Feedback timing: a single end-of-conversation prompt appears only after a
   completed booking/reschedule/cancel/escalation or an explicit Finish chat.
+- UI data isolation: the patient chat renders only assistant text, safe status
+  labels, and structured appointment/slot data. Raw tool inputs, model-facing
+  tool guidance, and reasoning parts are never rendered; the raw audit stays
+  behind staff authentication.
 - Playwright keyboard/visibility checks and axe scans on the chat and staff pages
   (no serious or critical accessibility violations).
 
@@ -260,6 +264,9 @@ scripts/                   Domain smoke test and live evaluation scripts
 - **Failures:** model timeout, rate limit, or malformed tool output falls back to
   a safe message and an escalation ticket. The booking path does not depend on
   the model staying online.
+- **UI isolation:** patient-facing components never render raw tool payloads or
+  internal instructions. They show curated labels, appointment cards, and safe
+  error copy; tool audit detail is staff-only.
 - **Accessibility:** semantic landmarks, labeled controls, keyboard/focus
   management, contrast, and no color-only status cues.
 - **Known limitations:** mock auth rather than a real identity provider, no real

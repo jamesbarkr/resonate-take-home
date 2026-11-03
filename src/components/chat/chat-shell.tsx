@@ -118,8 +118,10 @@ function ToolPart({ part }: { part: UIMessage["parts"][number] }) {
   const output =
     part.state === "output-available" ? asRecord(part.output) : null;
   const failed = output?.ok === false;
-  const message =
-    output && typeof output.message === "string" ? output.message : null;
+  const safeError =
+    output && typeof output.message === "string"
+      ? output.message
+      : "That step couldn't be completed. Please try again or ask for the front desk.";
 
   return (
     <div
@@ -140,11 +142,17 @@ function ToolPart({ part }: { part: UIMessage["parts"][number] }) {
         {part.state !== "output-available" && part.state !== "output-error" ? (
           <span className="text-xs font-normal text-slate-500">in progress…</span>
         ) : null}
+        {part.state === "output-available" && !failed ? (
+          <span className="text-xs font-normal text-slate-500">done</span>
+        ) : null}
       </p>
       {part.state === "output-error" ? (
-        <p className="mt-2 text-amber-900">{part.errorText}</p>
+        <p className="mt-2 text-amber-900">
+          That step couldn&apos;t be completed. Please try again or ask for the
+          front desk.
+        </p>
       ) : null}
-      {message ? <p className="mt-2 text-slate-600">{message}</p> : null}
+      {failed ? <p className="mt-2 text-amber-900">{safeError}</p> : null}
       {output?.appointment ? (
         <AppointmentCard value={asRecord(output.appointment) ?? {}} />
       ) : null}
@@ -505,8 +513,8 @@ export function ChatShell({ patientName }: { patientName?: string }) {
             >
               <p className="font-semibold">I couldn&apos;t finish that request.</p>
               <p className="mt-1">
-                {error.message ||
-                  "Please try again, or call the office at 617-555-0142."}
+                Please try again, or call the office at 617-555-0142 so a staff
+                member can help.
               </p>
               <button
                 className="mt-3 rounded-full border border-amber-300 px-3 py-1.5 text-xs font-semibold"

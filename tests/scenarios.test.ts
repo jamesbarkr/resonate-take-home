@@ -175,7 +175,8 @@ describe("assessment scenarios", () => {
       summary: "Severe pain, facial swelling, and difficulty swallowing.",
     });
     expect(alert.ok).toBe(true);
-    expect(String(alert.message)).toContain("notified");
+    expect(alert.notified).toBe(true);
+    expect(alert.alertId).toBeTruthy();
   });
 
   it("general inquiries about insurance, no-insurance options, and hours", async () => {
@@ -206,7 +207,6 @@ describe("assessment scenarios", () => {
     });
 
     expect(result.found).toBe(false);
-    expect(String(result.message)).toContain("No matching patient record");
   });
 
   it("rejects mutations without explicit confirmation", () => {

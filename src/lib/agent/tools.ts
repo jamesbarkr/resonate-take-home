@@ -123,8 +123,6 @@ export function createAgentTools(conversationId: string) {
             return {
               ok: true,
               found: false,
-              message:
-                "No matching patient record. Ask the patient to confirm their full name, phone number, and date of birth, or register them as a new patient.",
             };
           }
 
@@ -143,10 +141,6 @@ export function createAgentTools(conversationId: string) {
               householdId: patient.householdId,
               nameMatches: matchedOn.name,
             })),
-            message:
-              matches.length === 1
-                ? "One matching record found. Confirm the patient's name before continuing."
-                : "Multiple records match this phone and date of birth. Ask which patient the request is for.",
           };
         }),
     }),
@@ -166,7 +160,6 @@ export function createAgentTools(conversationId: string) {
             dateOfBirth: patient.dateOfBirth,
             insuranceName: patient.insuranceName,
             householdId: patient.householdId,
-            message: `Registered ${patient.fullName}.`,
           };
         }),
     }),
@@ -189,10 +182,6 @@ export function createAgentTools(conversationId: string) {
               endsAt: slot.endsAt,
               label: describeSlot(slot),
             })),
-            message:
-              slots.length === 0
-                ? "No availability in that range. Offer a nearby date range or ask about flexibility."
-                : "Offer these real slots to the patient.",
           };
         }),
     }),
@@ -213,8 +202,6 @@ export function createAgentTools(conversationId: string) {
             ok: true,
             holdId: hold.holdId,
             expiresAt: hold.expiresAt,
-            message:
-              "Slot held for five minutes. Confirm the details with the patient before booking.",
           };
         }),
     }),
@@ -238,7 +225,6 @@ export function createAgentTools(conversationId: string) {
           return {
             ok: true,
             appointment: appointmentSummaryWithLabel(summary),
-            message: "Appointment booked.",
           };
         }),
     }),
@@ -261,7 +247,6 @@ export function createAgentTools(conversationId: string) {
           return {
             ok: true,
             appointment: appointmentSummaryWithLabel(summary),
-            message: "Appointment rescheduled.",
           };
         }),
     }),
@@ -280,7 +265,6 @@ export function createAgentTools(conversationId: string) {
           return {
             ok: true,
             appointment: appointmentSummaryWithLabel(summary),
-            message: "Appointment cancelled.",
           };
         }),
     }),
@@ -299,10 +283,6 @@ export function createAgentTools(conversationId: string) {
             ok: true,
             count: summaries.length,
             appointments: summaries.map(appointmentSummaryWithLabel),
-            message:
-              summaries.length === 0
-                ? "No appointments found for that filter."
-                : "These are the patient's real appointments.",
           };
         }),
     }),
@@ -336,8 +316,7 @@ export function createAgentTools(conversationId: string) {
           return {
             ok: true,
             alertId: alert.id,
-            message:
-              "The dental office staff have been notified in the staff console.",
+            notified: true,
           };
         }),
     }),
@@ -362,8 +341,7 @@ export function createAgentTools(conversationId: string) {
           return {
             ok: true,
             alertId: alert.id,
-            message:
-              "I have escalated this to the front desk. A staff member will follow up. If this is a life-threatening emergency, call 911 now.",
+            escalated: true,
           };
         }),
     }),
