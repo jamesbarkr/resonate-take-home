@@ -51,7 +51,7 @@ export default async function HomePage() {
   const session = await getSession();
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="flex min-h-screen flex-col bg-slate-50">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link className="flex items-center gap-3" href="/">
@@ -384,7 +384,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="mt-auto border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-brand-900">

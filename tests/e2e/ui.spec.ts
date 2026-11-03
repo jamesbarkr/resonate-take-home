@@ -134,6 +134,29 @@ test("unknown conversation is a 404 for signed-in staff", async ({ page }) => {
   expect(response?.status()).toBe(404);
 });
 
+test("footer and login content stay balanced on a tall viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1_400 });
+  await page.goto("/login?role=patient");
+
+  const footer = page.locator("footer");
+  await expect(footer).toBeVisible();
+  const footerBox = await footer.boundingBox();
+  expect(footerBox).not.toBeNull();
+  expect(Math.round(footerBox!.y + footerBox!.height)).toBe(1_400);
+
+  const headerBox = await page.locator("header").boundingBox();
+  const contentBox = await page.getByTestId("login-content").boundingBox();
+  expect(headerBox).not.toBeNull();
+  expect(contentBox).not.toBeNull();
+
+  const availableCenter =
+    (headerBox!.y + headerBox!.height + footerBox!.y) / 2;
+  const contentCenter = contentBox!.y + contentBox!.height / 2;
+  expect(Math.abs(contentCenter - availableCenter)).toBeLessThanOrEqual(2);
+});
+
 test("interactive controls use pointer, disabled controls use not-allowed", async ({
   page,
 }) => {

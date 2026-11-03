@@ -27,7 +27,7 @@ export default async function LoginPage({
   const error = params.error;
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="flex min-h-screen flex-col bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link className="flex items-center gap-3" href="/">
@@ -55,7 +55,11 @@ export default async function LoginPage({
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:items-start">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 items-center px-4 py-12 sm:px-6">
+        <div
+          className="grid w-full gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-start"
+          data-testid="login-content"
+        >
         <section className="rounded-3xl bg-brand-900 p-8 text-white shadow-xl sm:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-100">
             Lakeside patient access
@@ -259,9 +263,10 @@ export default async function LoginPage({
             </div>
           )}
         </section>
+        </div>
       </div>
 
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="mt-auto border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-xs text-slate-500 sm:px-6">
           <p>© 2026 Lakeside Family Dental · Boston, MA</p>
           <div className="flex gap-4">
