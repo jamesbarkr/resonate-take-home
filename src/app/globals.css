@@ -39,6 +39,12 @@ body {
   outline-offset: 2px;
 }
 
+/* The composer sits inside a bordered card, so it opts out of the global
+   focus ring. */
+#chat-input:focus-visible {
+  outline: none;
+}
+
 /* Every interactive control should read as interactive. */
 a[href],
 button:not(:disabled),

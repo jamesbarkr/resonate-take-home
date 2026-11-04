@@ -94,6 +94,22 @@ test("staff can sign in, review alerts, and open a conversation", async ({
     page.getByRole("heading", { name: /Patient feedback/i }),
   ).toBeVisible();
 
+  const sectionGap = await page.evaluate(() => {
+    const alerts = document.querySelector(
+      'section[aria-labelledby="alerts-heading"]',
+    );
+    const conversations = document.querySelector(
+      'section[aria-labelledby="conversations-heading"]',
+    );
+    if (!alerts || !conversations) return null;
+    return (
+      conversations.getBoundingClientRect().top -
+      alerts.getBoundingClientRect().bottom
+    );
+  });
+  expect(sectionGap).not.toBeNull();
+  expect(sectionGap ?? 0).toBeLessThanOrEqual(32);
+
   const results = await new AxeBuilder({ page }).analyze();
   expect(seriousOrCritical(results.violations)).toEqual([]);
 });
@@ -169,7 +185,7 @@ function uiStream(chunks: Array<Record<string, unknown>>): string {
   );
 }
 
-test("clickable slots, confirmation replies, and end-of-chat feedback", async ({
+test("clickable slots and end-of-chat feedback", async ({
   page,
 }) => {
   const slotLabel =
@@ -322,7 +338,18 @@ test("clickable slots, confirmation replies, and end-of-chat feedback", async ({
     .click();
   await expect(page.getByText(/Let.s go with Monday, November 9/i)).toBeVisible();
 
-  await page.getByRole("button", { name: /Yes, please book it/i }).click();
+  await expect(
+    page.getByText(/Should I book that for you/i),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Yes, please book it/i }),
+  ).toHaveCount(0);
+
+  await page
+    .getByRole("textbox", { name: /Message the dental assistant/i })
+    .fill("Yes, please book it");
+  await page.getByRole("button", { name: /^Send$/ }).click();
+
   await expect(
     page.getByRole("heading", { name: /How was this experience/i }),
   ).toBeVisible();
@@ -377,6 +404,129 @@ test("latest message stays visible at the bottom as the chat grows", async ({
     )
     .toBeLessThanOrEqual(2);
   await expect(input).toBeVisible();
+});
+
+test("availability slots from different providers keep unique React keys", async ({
+  page,
+}) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+
+  await page.route("**/api/chat", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "x-vercel-ai-ui-message-stream": "v1",
+      },
+      body: uiStream([
+        { type: "start" },
+        { type: "start-step" },
+        {
+          type: "tool-input-start",
+          toolCallId: "call-same-time",
+          toolName: "get_availability",
+        },
+        {
+          type: "tool-input-available",
+          toolCallId: "call-same-time",
+          toolName: "get_availability",
+          input: { appointmentType: "general_checkup" },
+        },
+        {
+          type: "tool-output-available",
+          toolCallId: "call-same-time",
+          output: {
+            ok: true,
+            count: 2,
+            slots: [
+              {
+                providerId: "prov_chen",
+                providerName: "Dr. Maya Chen",
+                appointmentType: "general_checkup",
+                startsAt: "2026-11-10T14:00:00.000Z",
+                endsAt: "2026-11-10T14:30:00.000Z",
+                label: "Monday at 9:00 AM with Dr. Maya Chen",
+              },
+              {
+                providerId: "prov_haddad",
+                providerName: "Dr. Omar Haddad",
+                appointmentType: "general_checkup",
+                startsAt: "2026-11-10T14:00:00.000Z",
+                endsAt: "2026-11-10T14:30:00.000Z",
+                label: "Monday at 9:00 AM with Dr. Omar Haddad",
+              },
+            ],
+          },
+        },
+        { type: "text-start", id: "txt-same-time" },
+        {
+          type: "text-delta",
+          id: "txt-same-time",
+          delta: "Which provider works for you?",
+        },
+        { type: "text-end", id: "txt-same-time" },
+        { type: "finish-step" },
+        { type: "finish", finishReason: "stop" },
+      ]),
+    });
+  });
+
+  await page.goto("/chat");
+  await page
+    .getByRole("textbox", { name: /Message the dental assistant/i })
+    .fill("Show me checkup times");
+  await page.getByRole("button", { name: /^Send$/ }).click();
+
+  await expect(
+    page.getByRole("button", { name: /Choose .*Dr\. Maya Chen/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Choose .*Dr\. Omar Haddad/i }),
+  ).toBeVisible();
+  expect(consoleErrors.filter((text) => /same key/i.test(text))).toEqual([]);
+});
+
+test("assistant markdown renders as formatting while user input stays literal", async ({
+  page,
+}) => {
+  await page.route("**/api/chat", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "x-vercel-ai-ui-message-stream": "v1",
+      },
+      body: uiStream([
+        { type: "start" },
+        { type: "start-step" },
+        { type: "text-start", id: "txt-markdown" },
+        {
+          type: "text-delta",
+          id: "txt-markdown",
+          delta:
+            "Here are the details for **Maria Lopez**:\n\n- First item\n- Second item",
+        },
+        { type: "text-end", id: "txt-markdown" },
+        { type: "finish-step" },
+        { type: "finish", finishReason: "stop" },
+      ]),
+    });
+  });
+
+  await page.goto("/chat");
+  const input = page.getByRole("textbox", {
+    name: /Message the dental assistant/i,
+  });
+  await input.fill("Keep **this** literal");
+  await page.getByRole("button", { name: /^Send$/ }).click();
+
+  await expect(page.locator("strong", { hasText: "Maria Lopez" })).toBeVisible();
+  await expect(page.getByText("**Maria Lopez**")).toHaveCount(0);
+  await expect(page.getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByText("Keep **this** literal")).toBeVisible();
 });
 
 test("interactive controls use pointer, disabled controls use not-allowed", async ({

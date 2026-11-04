@@ -216,15 +216,15 @@ Coverage includes:
   controls use not-allowed; tall-viewport footers stay pinned and the login
   content stays vertically centered.
 - Feedback timing: a single end-of-conversation prompt appears only after a
-  completed booking/reschedule/cancel/escalation or an explicit Finish chat.
+  completed booking/reschedule/cancel/escalation.
 - UI data isolation: the patient chat renders only assistant text, safe status
   labels, and structured appointment/slot data. Raw tool inputs, model-facing
   tool guidance, and reasoning parts are never rendered; the raw audit stays
   behind staff authentication.
-- Conversational convenience: availability slots are clickable, and contextual
-  yes/no chips appear for confirmation questions. Both send ordinary chat
-  messages, so the assistant still restates details and the confirmation gate
-  remains intact.
+- Conversational convenience: availability slots are clickable and send an
+  ordinary chat message, so the assistant still restates details and the
+  confirmation gate remains intact. Confirmations are typed by the patient
+  rather than inferred from canned chips.
 - Chat scrolling: the transcript is a fixed-height, internally scrolling pane
   that stays pinned to the latest message as the conversation grows.
 - Playwright keyboard/visibility checks and axe scans on the chat and staff pages

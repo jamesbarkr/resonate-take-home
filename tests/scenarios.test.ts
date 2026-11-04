@@ -234,6 +234,15 @@ describe("assessment scenarios", () => {
     expect(prompt).toContain("restate the exact appointment type");
   });
 
+  it("asks one question at a time and separates detail confirmation from booking", () => {
+    const prompt = buildSystemPrompt();
+    expect(prompt).toContain("Ask no more than one question per reply");
+    expect(prompt).toContain("Never combine a confirmation with the next step");
+    expect(prompt).toContain(
+      "Do not discuss availability or appointment types in that same reply",
+    );
+  });
+
   it("passes signed-in patient and household context to the model", async () => {
     const patient = await patientService.getById("pat_maria");
     const household = await patientService.listHousehold("pat_maria");

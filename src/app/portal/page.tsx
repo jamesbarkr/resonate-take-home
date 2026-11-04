@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   title: "Patient portal | Lakeside Family Dental",
 };
 
+const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
+  booked: "Booked",
+  cancelled: "Cancelled",
+  completed: "Completed",
+  no_show: "No-show",
+};
+
 export default async function PortalPage() {
   const session = await getSession();
   if (session?.role !== "patient") {
@@ -156,7 +163,8 @@ export default async function PortalPage() {
                       ) : null}
                     </div>
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">
-                      {appointment.status}
+                      {APPOINTMENT_STATUS_LABELS[appointment.status] ??
+                        appointment.status}
                     </span>
                   </div>
                   <p className="mt-3 text-xs text-slate-500">

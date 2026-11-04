@@ -7,11 +7,9 @@ import {
   type UIMessage,
 } from "ai";
 import { useChat } from "@ai-sdk/react";
+import ReactMarkdown from "react-markdown";
 import { conversationCompletion } from "@/lib/chat/feedback";
-import {
-  confirmationReplies,
-  slotSelectionMessage,
-} from "@/lib/chat/quick-replies";
+import { slotSelectionMessage } from "@/lib/chat/quick-replies";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -57,6 +55,14 @@ function messageText(message: UIMessage): string {
     .map((part) => part.text)
     .join("\n")
     .trim();
+}
+
+function AssistantMarkdown({ text }: { text: string }) {
+  return (
+    <div className="text-sm leading-relaxed [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-200 [&_blockquote]:pl-3 [&_blockquote]:italic [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_em]:italic [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:font-semibold [&_li]:mb-1 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:mb-2 [&_p]:whitespace-pre-wrap [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-4">
+      <ReactMarkdown>{text}</ReactMarkdown>
+    </div>
+  );
 }
 
 function AppointmentCard({ value }: { value: JsonRecord }) {
@@ -110,7 +116,11 @@ function SlotList({
             ? slot.label
             : "Available appointment";
         return (
-          <li key={`${String(slot.startsAt ?? index)}`}>
+          <li
+            key={`${String(slot.providerId ?? "provider")}-${String(
+              slot.startsAt ?? index,
+            )}-${index}`}
+          >
             <button
               aria-label={`Choose ${label}`}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm font-medium text-slate-800 hover:border-brand-500 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -292,7 +302,6 @@ export function ChatShell({ patientName }: { patientName?: string }) {
   );
   const { messages, sendMessage, status, error, stop } = useChat({ transport });
   const [input, setInput] = useState("");
-  const [ended, setEnded] = useState(false);
   const [dismissedCompletionId, setDismissedCompletionId] = useState<
     string | null
   >(null);
@@ -301,18 +310,11 @@ export function ChatShell({ patientName }: { patientName?: string }) {
 
   const busy = status === "submitted" || status === "streaming";
   const completion = conversationCompletion(messages);
-  const lastAssistantId = [...messages]
-    .reverse()
-    .find((message) => message.role === "assistant")?.id;
-  const feedbackMessageId = ended ? lastAssistantId : completion?.messageId;
+  const feedbackMessageId = completion?.messageId;
   const showFeedback =
     !busy &&
-    (ended ||
-      (completion !== null && completion.messageId !== dismissedCompletionId));
-  const confirmation = confirmationReplies(messages);
-  const showConfirmation =
-    !busy && !ended && !showFeedback && confirmation !== null;
-
+    completion !== null &&
+    completion.messageId !== dismissedCompletionId;
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -320,7 +322,7 @@ export function ChatShell({ patientName }: { patientName?: string }) {
       container.scrollTop = container.scrollHeight;
     });
     return () => cancelAnimationFrame(frame);
-  }, [messages, status, ended, showFeedback, showConfirmation]);
+  }, [messages, status, showFeedback]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -330,23 +332,10 @@ export function ChatShell({ patientName }: { patientName?: string }) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
     setInput("");
-    setEnded(false);
     void sendMessage({ text: trimmed });
   }
 
-  function finishConversation() {
-    setEnded(true);
-    setDismissedCompletionId(null);
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    });
-  }
-
   function continueConversation() {
-    setEnded(false);
     setDismissedCompletionId(completion?.messageId ?? null);
     inputRef.current?.focus();
   }
@@ -507,9 +496,13 @@ export function ChatShell({ patientName }: { patientName?: string }) {
                     </p>
                   ) : null}
                   {text ? (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {text}
-                    </p>
+                    isUser ? (
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {text}
+                      </p>
+                    ) : (
+                      <AssistantMarkdown text={text} />
+                    )
                   ) : null}
                   {message.parts.map((part, index) => (
                     <ToolPart
@@ -523,29 +516,6 @@ export function ChatShell({ patientName }: { patientName?: string }) {
               </div>
             );
           })}
-
-          {showConfirmation && confirmation ? (
-            <div
-              aria-label="Quick replies"
-              className="flex flex-wrap gap-2"
-              role="group"
-            >
-              <button
-                className="rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 hover:border-brand-500"
-                onClick={() => submitMessage(confirmation.yes)}
-                type="button"
-              >
-                {confirmation.yes}
-              </button>
-              <button
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400"
-                onClick={() => submitMessage(confirmation.no)}
-                type="button"
-              >
-                {confirmation.no}
-              </button>
-            </div>
-          ) : null}
 
           {busy ? (
             <div className="flex justify-start">
@@ -564,7 +534,7 @@ export function ChatShell({ patientName }: { patientName?: string }) {
 
           {showFeedback ? (
             <ConversationFeedback
-              key={feedbackMessageId ?? "manual-finish"}
+              key={feedbackMessageId ?? "feedback"}
               messageId={feedbackMessageId}
               onContinue={continueConversation}
             />
@@ -626,21 +596,6 @@ export function ChatShell({ patientName }: { patientName?: string }) {
                 Send
               </button>
             )}
-          </div>
-          <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-1">
-            <p className="text-[11px] text-slate-600">
-              Please don&apos;t share more personal information than needed.
-              This demo uses synthetic patient data.
-            </p>
-            {messages.length > 0 && !ended && !busy ? (
-              <button
-                className="shrink-0 text-[11px] font-semibold text-brand-600 hover:text-brand-700"
-                onClick={finishConversation}
-                type="button"
-              >
-                Finish chat
-              </button>
-            ) : null}
           </div>
         </form>
       </main>
