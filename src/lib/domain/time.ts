@@ -16,22 +16,12 @@ export function practiceTimeFromIso(iso: string): string {
   return formatInTimeZone(new Date(iso), PRACTICE_TIMEZONE, "HH:mm");
 }
 
-export function formatPracticeDate(isoOrDate: string | Date): string {
-  const date =
-    typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
-  return formatInTimeZone(date, PRACTICE_TIMEZONE, "EEEE, MMMM d");
-}
-
 export function formatPracticeDateTime(iso: string): string {
   return formatInTimeZone(
     new Date(iso),
     PRACTICE_TIMEZONE,
     "EEEE, MMMM d 'at' h:mm a",
   );
-}
-
-export function formatPracticeTime(iso: string): string {
-  return formatInTimeZone(new Date(iso), PRACTICE_TIMEZONE, "h:mm a");
 }
 
 export function addDaysToDateString(dateString: string, days: number): string {

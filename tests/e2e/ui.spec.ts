@@ -9,8 +9,10 @@ const seriousOrCritical = (
       violation.impact === "serious" || violation.impact === "critical",
   );
 
+const STAFF_ORIGIN = "http://localhost:3001";
+
 async function signInPatient(page: Page) {
-  await page.goto("/login?role=patient");
+  await page.goto("/login");
   await page.getByLabel("Phone number").fill("617-555-0102");
   await page.getByLabel("Date of birth").fill("1990-11-30");
   await page.getByRole("button", { name: /^Sign in$/ }).click();
@@ -18,13 +20,13 @@ async function signInPatient(page: Page) {
 }
 
 async function signInStaff(page: Page) {
-  await page.goto("/login?role=staff");
+  await page.goto(`${STAFF_ORIGIN}/login`);
   await page.getByLabel("Work email").fill("frontdesk@lakeside.test");
   await page.getByLabel("Password").fill("frontdesk-demo");
   await page
     .getByRole("button", { name: /Sign in to staff workspace/i })
     .click();
-  await expect(page).toHaveURL(/\/staff$/);
+  await expect(page).toHaveURL(`${STAFF_ORIGIN}/staff`);
 }
 
 test("landing page reads as a complete practice site", async ({ page }) => {
@@ -47,12 +49,21 @@ test("landing page reads as a complete practice site", async ({ page }) => {
   expect(seriousOrCritical(results.violations)).toEqual([]);
 });
 
-test("protected staff routes redirect to staff sign-in", async ({ page }) => {
-  await page.goto("/staff");
-  await expect(page).toHaveURL(/\/login\?role=staff/);
+test("staff routes are isolated to the staff site", async ({ page }) => {
+  await page.goto(`${STAFF_ORIGIN}/staff`);
+  await expect(page).toHaveURL(
+    /localhost:3001\/login\?next=(%2F|\/)staff/,
+  );
   await expect(
     page.getByRole("heading", { name: /Staff sign in/i }),
   ).toBeVisible();
+
+  await page.goto("/staff");
+  await expect(page).toHaveURL("http://localhost:3000/");
+  await page.goto("/login");
+  await expect(
+    page.getByRole("heading", { name: /Staff sign in/i }),
+  ).toHaveCount(0);
 });
 
 test("patient can sign in and see the portal", async ({ page }) => {
@@ -89,9 +100,6 @@ test("staff can sign in, review alerts, and open a conversation", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /Recent conversations/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /Patient feedback/i }),
   ).toBeVisible();
 
   const sectionGap = await page.evaluate(() => {
@@ -151,7 +159,9 @@ test("chat shell is usable, accessible, and stays usable on mobile", async ({
 
 test("unknown conversation is a 404 for signed-in staff", async ({ page }) => {
   await signInStaff(page);
-  const response = await page.goto("/staff/conversations/does-not-exist");
+  const response = await page.goto(
+    `${STAFF_ORIGIN}/staff/conversations/does-not-exist`,
+  );
   expect(response?.status()).toBe(404);
 });
 
@@ -159,7 +169,7 @@ test("footer and login content stay balanced on a tall viewport", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1_400 });
-  await page.goto("/login?role=patient");
+  await page.goto("/login");
 
   const footer = page.locator("footer");
   await expect(footer).toBeVisible();
@@ -185,7 +195,7 @@ function uiStream(chunks: Array<Record<string, unknown>>): string {
   );
 }
 
-test("clickable slots and end-of-chat feedback", async ({
+test("typed slot choice completes the booking flow", async ({
   page,
 }) => {
   const slotLabel =
@@ -328,15 +338,17 @@ test("clickable slots and end-of-chat feedback", async ({
   });
 
   await page.goto("/chat");
-  await page
-    .getByRole("textbox", { name: /Message the dental assistant/i })
-    .fill("Show me cleaning times next week");
+  const input = page.getByRole("textbox", {
+    name: /Message the dental assistant/i,
+  });
+  await input.fill("Show me cleaning times next week");
   await page.getByRole("button", { name: /^Send$/ }).click();
 
-  await page
-    .getByRole("button", { name: new RegExp(`Choose ${slotLabel}`) })
-    .click();
-  await expect(page.getByText(/Let.s go with Monday, November 9/i)).toBeVisible();
+  await expect(page.getByText("Which time would you like?")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Choose / })).toHaveCount(0);
+
+  await input.fill(`Let's go with ${slotLabel}. Please book it.`);
+  await page.getByRole("button", { name: /^Send$/ }).click();
 
   await expect(
     page.getByText(/Should I book that for you/i),
@@ -345,15 +357,139 @@ test("clickable slots and end-of-chat feedback", async ({
     page.getByRole("button", { name: /Yes, please book it/i }),
   ).toHaveCount(0);
 
-  await page
-    .getByRole("textbox", { name: /Message the dental assistant/i })
-    .fill("Yes, please book it");
+  await input.fill("Yes, please book it");
   await page.getByRole("button", { name: /^Send$/ }).click();
 
   await expect(
-    page.getByRole("heading", { name: /How was this experience/i }),
+    page.getByText("You're booked. See you Monday."),
   ).toBeVisible();
-  await expect(page.getByText("Was this helpful?")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: /How was this experience/i }),
+  ).toHaveCount(0);
+});
+
+test("family availability renders without clickable slot buttons", async ({
+  page,
+}) => {
+  let call = 0;
+
+  await page.route("**/api/chat", async (route) => {
+    call += 1;
+
+    if (call === 1) {
+      await route.fulfill({
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+          "x-vercel-ai-ui-message-stream": "v1",
+        },
+        body: uiStream([
+          { type: "start" },
+          { type: "start-step" },
+          {
+            type: "tool-input-start",
+            toolCallId: "call-david",
+            toolName: "get_availability",
+          },
+          {
+            type: "tool-input-available",
+            toolCallId: "call-david",
+            toolName: "get_availability",
+            input: { patientId: "pat_david", appointmentType: "cleaning" },
+          },
+          {
+            type: "tool-output-available",
+            toolCallId: "call-david",
+            output: {
+              ok: true,
+              patientId: "pat_david",
+              patientName: "David Johnson",
+              count: 1,
+              slots: [
+                {
+                  providerId: "prov_patel",
+                  providerName: "Priya Patel, RDH",
+                  appointmentType: "cleaning",
+                  startsAt: "2026-11-09T14:00:00.000Z",
+                  endsAt: "2026-11-09T14:45:00.000Z",
+                  label: "Monday, November 9 at 9:00 AM with Priya Patel, RDH",
+                },
+              ],
+            },
+          },
+          {
+            type: "tool-input-start",
+            toolCallId: "call-sarah",
+            toolName: "get_availability",
+          },
+          {
+            type: "tool-input-available",
+            toolCallId: "call-sarah",
+            toolName: "get_availability",
+            input: { patientId: "pat_sarah", appointmentType: "cleaning" },
+          },
+          {
+            type: "tool-output-available",
+            toolCallId: "call-sarah",
+            output: {
+              ok: true,
+              patientId: "pat_sarah",
+              patientName: "Sarah Johnson",
+              count: 1,
+              slots: [
+                {
+                  providerId: "prov_patel",
+                  providerName: "Priya Patel, RDH",
+                  appointmentType: "cleaning",
+                  startsAt: "2026-11-09T15:00:00.000Z",
+                  endsAt: "2026-11-09T15:45:00.000Z",
+                  label: "Monday, November 9 at 10:00 AM with Priya Patel, RDH",
+                },
+              ],
+            },
+          },
+          { type: "text-start", id: "txt-family" },
+          {
+            type: "text-delta",
+            id: "txt-family",
+            delta: "Here are back-to-back options for David and Sarah.",
+          },
+          { type: "text-end", id: "txt-family" },
+          { type: "finish-step" },
+          { type: "finish", finishReason: "stop" },
+        ]),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "x-vercel-ai-ui-message-stream": "v1",
+      },
+      body: uiStream([
+        { type: "start" },
+        { type: "start-step" },
+        { type: "text-start", id: "txt-thanks" },
+        { type: "text-delta", id: "txt-thanks", delta: "Thanks." },
+        { type: "text-end", id: "txt-thanks" },
+        { type: "finish-step" },
+        { type: "finish", finishReason: "stop" },
+      ]),
+    });
+  });
+
+  await page.goto("/chat");
+  await page
+    .getByRole("textbox", { name: /Message the dental assistant/i })
+    .fill("Book cleanings for David and Sarah Johnson");
+  await page.getByRole("button", { name: /^Send$/ }).click();
+
+  await expect(
+    page.getByText("Here are back-to-back options for David and Sarah."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Choose / })).toHaveCount(0);
 });
 
 test("latest message stays visible at the bottom as the chat grows", async ({
@@ -404,89 +540,6 @@ test("latest message stays visible at the bottom as the chat grows", async ({
     )
     .toBeLessThanOrEqual(2);
   await expect(input).toBeVisible();
-});
-
-test("availability slots from different providers keep unique React keys", async ({
-  page,
-}) => {
-  const consoleErrors: string[] = [];
-  page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
-  });
-
-  await page.route("**/api/chat", async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: {
-        "content-type": "text/event-stream",
-        "x-vercel-ai-ui-message-stream": "v1",
-      },
-      body: uiStream([
-        { type: "start" },
-        { type: "start-step" },
-        {
-          type: "tool-input-start",
-          toolCallId: "call-same-time",
-          toolName: "get_availability",
-        },
-        {
-          type: "tool-input-available",
-          toolCallId: "call-same-time",
-          toolName: "get_availability",
-          input: { appointmentType: "general_checkup" },
-        },
-        {
-          type: "tool-output-available",
-          toolCallId: "call-same-time",
-          output: {
-            ok: true,
-            count: 2,
-            slots: [
-              {
-                providerId: "prov_chen",
-                providerName: "Dr. Maya Chen",
-                appointmentType: "general_checkup",
-                startsAt: "2026-11-10T14:00:00.000Z",
-                endsAt: "2026-11-10T14:30:00.000Z",
-                label: "Monday at 9:00 AM with Dr. Maya Chen",
-              },
-              {
-                providerId: "prov_haddad",
-                providerName: "Dr. Omar Haddad",
-                appointmentType: "general_checkup",
-                startsAt: "2026-11-10T14:00:00.000Z",
-                endsAt: "2026-11-10T14:30:00.000Z",
-                label: "Monday at 9:00 AM with Dr. Omar Haddad",
-              },
-            ],
-          },
-        },
-        { type: "text-start", id: "txt-same-time" },
-        {
-          type: "text-delta",
-          id: "txt-same-time",
-          delta: "Which provider works for you?",
-        },
-        { type: "text-end", id: "txt-same-time" },
-        { type: "finish-step" },
-        { type: "finish", finishReason: "stop" },
-      ]),
-    });
-  });
-
-  await page.goto("/chat");
-  await page
-    .getByRole("textbox", { name: /Message the dental assistant/i })
-    .fill("Show me checkup times");
-  await page.getByRole("button", { name: /^Send$/ }).click();
-
-  await expect(
-    page.getByRole("button", { name: /Choose .*Dr\. Maya Chen/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Choose .*Dr\. Omar Haddad/i }),
-  ).toBeVisible();
-  expect(consoleErrors.filter((text) => /same key/i.test(text))).toEqual([]);
 });
 
 test("assistant markdown renders as formatting while user input stays literal", async ({
@@ -552,7 +605,7 @@ test("interactive controls use pointer, disabled controls use not-allowed", asyn
     await send.evaluate((element) => getComputedStyle(element).cursor),
   ).toBe("not-allowed");
 
-  await page.goto("/login?role=patient");
+  await page.goto("/login");
   const submit = page.getByRole("button", { name: /^Sign in$/ });
   expect(
     await submit.evaluate((element) => getComputedStyle(element).cursor),

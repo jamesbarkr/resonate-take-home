@@ -6,7 +6,6 @@ import {
   appointments,
   availabilityBlocks,
   conversations,
-  feedback,
   households,
   insurancePlans,
   messages,
@@ -69,7 +68,6 @@ export function seedDatabase() {
   }
 
   // Clear in dependency order so reseeding is deterministic.
-  db.delete(feedback).run();
   db.delete(staffAlerts).run();
   db.delete(toolCalls).run();
   db.delete(messages).run();

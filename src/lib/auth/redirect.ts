@@ -10,12 +10,10 @@ export function safeRedirectPath(
 
 export function loginErrorUrl(
   requestUrl: string,
-  role: "patient" | "staff",
   message: string,
   next?: string,
 ): URL {
   const url = new URL("/login", requestUrl);
-  url.searchParams.set("role", role);
   url.searchParams.set("error", message);
   if (next) url.searchParams.set("next", next);
   return url;

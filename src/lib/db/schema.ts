@@ -267,23 +267,6 @@ export const staffAlerts = sqliteTable(
   (table) => [index("staff_alerts_status_idx").on(table.status, table.createdAt)],
 );
 
-export const feedback = sqliteTable(
-  "feedback",
-  {
-    id: text("id").primaryKey(),
-    conversationId: text("conversation_id")
-      .notNull()
-      .references(() => conversations.id, { onDelete: "cascade" }),
-    messageId: text("message_id").references(() => messages.id, {
-      onDelete: "set null",
-    }),
-    rating: integer("rating").notNull(),
-    comment: text("comment"),
-    createdAt: text("created_at").notNull(),
-  },
-  (table) => [index("feedback_conversation_idx").on(table.conversationId)],
-);
-
 export type Patient = typeof patients.$inferSelect;
 export type NewPatient = typeof patients.$inferInsert;
 export type Appointment = typeof appointments.$inferSelect;

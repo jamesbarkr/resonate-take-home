@@ -135,6 +135,17 @@ describe("assessment scenarios", () => {
     }>;
     expect(slots.length).toBeGreaterThanOrEqual(2);
 
+    await execute(tools, "find_patient", {
+      fullName: "David Johnson",
+      phone: "6175550101",
+      dateOfBirth: "1985-04-12",
+    });
+    await execute(tools, "find_patient", {
+      fullName: "Sarah Johnson",
+      phone: "6175550101",
+      dateOfBirth: "1987-09-03",
+    });
+
     const david = await execute(tools, "book_appointment", {
       patientId: "pat_david",
       providerId: slots[0].providerId,
@@ -167,6 +178,12 @@ describe("assessment scenarios", () => {
       limit: 2,
     });
     expect((availability.slots as unknown[]).length).toBeGreaterThan(0);
+
+    await execute(tools, "find_patient", {
+      fullName: "David Johnson",
+      phone: "6175550101",
+      dateOfBirth: "1985-04-12",
+    });
 
     const alert = await execute(tools, "notify_staff", {
       patientId: "pat_david",

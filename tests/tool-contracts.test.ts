@@ -61,4 +61,5 @@ describe("tool contracts", () => {
     });
     expect(result.success).toBe(false);
   });
+
 });

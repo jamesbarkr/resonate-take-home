@@ -7,7 +7,6 @@ import {
   patients,
   providers,
   slotHolds,
-  type NewAppointment,
 } from "@/lib/db/schema";
 import type { AppointmentTypeSlug } from "@/lib/domain/types";
 
@@ -91,34 +90,6 @@ export function getAppointmentRecord(id: string) {
   return db.select().from(appointments).where(eq(appointments.id, id)).get();
 }
 
-export function getAppointmentByKey(idempotencyKey: string) {
-  return db
-    .select()
-    .from(appointments)
-    .where(eq(appointments.idempotencyKey, idempotencyKey))
-    .get();
-}
-
-export function listAppointmentRecordsForPatient(
-  patientId: string,
-  includePast: boolean,
-) {
-  const nowIso = new Date().toISOString();
-  return db
-    .select()
-    .from(appointments)
-    .where(
-      includePast
-        ? eq(appointments.patientId, patientId)
-        : and(
-            eq(appointments.patientId, patientId),
-            gte(appointments.startsAt, nowIso),
-            eq(appointments.status, "booked"),
-          ),
-    )
-    .all();
-}
-
 export function getAppointmentSummaryRecord(id: string) {
   return db
     .select({
@@ -171,31 +142,4 @@ export function listAppointmentSummaryRecordsForPatient(
   return rows.sort((a, b) =>
     a.appointment.startsAt.localeCompare(b.appointment.startsAt),
   );
-}
-
-export function insertAppointmentRecord(values: NewAppointment) {
-  return db.insert(appointments).values(values).run();
-}
-
-export function deleteExpiredHolds(nowIso: string) {
-  return db.delete(slotHolds).where(lte(slotHolds.expiresAt, nowIso)).run();
-}
-
-export function getHoldForSlot(providerId: string, startsAt: string) {
-  return db
-    .select()
-    .from(slotHolds)
-    .where(
-      and(eq(slotHolds.providerId, providerId), eq(slotHolds.startsAt, startsAt)),
-    )
-    .get();
-}
-
-export function deleteHoldForSlot(providerId: string, startsAt: string) {
-  return db
-    .delete(slotHolds)
-    .where(
-      and(eq(slotHolds.providerId, providerId), eq(slotHolds.startsAt, startsAt)),
-    )
-    .run();
 }

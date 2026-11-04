@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requirePatientPage } from "@/lib/auth/page-guards";
 import { patientService } from "@/lib/domain/patient-service";
 import { schedulingService } from "@/lib/domain/scheduling-service";
 import { formatPracticeDateTime } from "@/lib/domain/time";
+import type { AppointmentStatus } from "@/lib/domain/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
   title: "Patient portal | Lakeside Family Dental",
 };
 
-const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
+const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
   booked: "Booked",
   cancelled: "Cancelled",
   completed: "Completed",
@@ -20,15 +21,12 @@ const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function PortalPage() {
-  const session = await getSession();
-  if (session?.role !== "patient") {
-    redirect("/login?role=patient&next=/portal");
-  }
+  const session = await requirePatientPage();
 
   const patient = await patientService.getById(session.patientId);
   if (!patient) {
     redirect(
-      `/login?role=patient&error=${encodeURIComponent(
+      `/login?error=${encodeURIComponent(
         "We could not find that patient record. Please sign in again.",
       )}`,
     );

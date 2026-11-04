@@ -10,10 +10,6 @@ export function findPatientsByPhoneAndDob(phone: string, dateOfBirth: string) {
     .all();
 }
 
-export function findPatientsByPhone(phone: string) {
-  return db.select().from(patients).where(eq(patients.phone, phone)).all();
-}
-
 export function getPatientById(id: string) {
   return db.select().from(patients).where(eq(patients.id, id)).get();
 }

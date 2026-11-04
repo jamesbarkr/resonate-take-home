@@ -8,17 +8,15 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import {
   getLanguageModel,
   isLlmConfigured,
 } from "@/lib/agent/model";
 import { buildSystemPrompt } from "@/lib/agent/prompt";
 import { createAgentTools } from "@/lib/agent/tools";
-import {
-  SESSION_COOKIE_NAME,
-  verifySessionToken,
-} from "@/lib/auth/session";
+import { getPatientSession } from "@/lib/auth/session";
+import { wrongSiteResponse } from "@/lib/site";
 import type { Patient } from "@/lib/db/schema";
 import {
   ensureConversation,
@@ -54,6 +52,9 @@ function lastUserText(messages: UIMessage[]): string {
 }
 
 export async function POST(request: NextRequest) {
+  const rejected = wrongSiteResponse("patient");
+  if (rejected) return rejected;
+
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     request.headers.get("x-real-ip") ??
@@ -116,12 +117,10 @@ export async function POST(request: NextRequest) {
 
   const conversationId = resolveConversationId(request);
   ensureConversation(conversationId);
-  const session = verifySessionToken(
-    request.cookies.get(SESSION_COOKIE_NAME)?.value,
-  );
+  const session = await getPatientSession();
   let signedInPatient: Patient | null = null;
   let household: Patient[] = [];
-  if (session?.role === "patient") {
+  if (session) {
     setConversationPatient(conversationId, session.patientId);
     signedInPatient = await patientService.getById(session.patientId);
     if (signedInPatient) {

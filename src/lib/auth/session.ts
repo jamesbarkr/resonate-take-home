@@ -1,5 +1,6 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { cookies } from "next/headers";
+import { safeEqual } from "@/lib/auth/safe-equal";
 
 export type PatientSession = {
   role: "patient";
@@ -17,7 +18,18 @@ export type Session = PatientSession | StaffSession;
 
 type SessionPayload = Session & { exp: number };
 
-export const SESSION_COOKIE_NAME = "lakeside_session";
+export const PATIENT_SESSION_COOKIE_NAME = "lakeside_patient_session";
+export const STAFF_SESSION_COOKIE_NAME = "lakeside_staff_session";
+export const SESSION_COOKIE_NAMES = [
+  PATIENT_SESSION_COOKIE_NAME,
+  STAFF_SESSION_COOKIE_NAME,
+] as const;
+
+const SESSION_COOKIE_BY_ROLE = {
+  patient: PATIENT_SESSION_COOKIE_NAME,
+  staff: STAFF_SESSION_COOKIE_NAME,
+} as const;
+
 const DEFAULT_SECRET = "local-development-secret-change-me";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
@@ -49,13 +61,7 @@ export function verifySessionToken(token: string | undefined): Session | null {
   const [encoded, signature] = token.split(".");
   if (!encoded || !signature) return null;
 
-  const expected = sign(encoded);
-  const receivedBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (
-    receivedBuffer.length !== expectedBuffer.length ||
-    !timingSafeEqual(receivedBuffer, expectedBuffer)
-  ) {
+  if (!safeEqual(signature, sign(encoded))) {
     return null;
   }
 
@@ -94,10 +100,20 @@ export function verifySessionToken(token: string | undefined): Session | null {
   }
 }
 
-export async function getSession(): Promise<Session | null> {
+async function getSessionForRole<R extends Session["role"]>(
+  role: R,
+): Promise<Extract<Session, { role: R }> | null> {
   const cookieStore = await cookies();
-  return verifySessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const session = verifySessionToken(
+    cookieStore.get(SESSION_COOKIE_BY_ROLE[role])?.value,
+  );
+  return session?.role === role
+    ? (session as Extract<Session, { role: R }>)
+    : null;
 }
+
+export const getPatientSession = () => getSessionForRole("patient");
+export const getStaffSession = () => getSessionForRole("staff");
 
 export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {
   return {

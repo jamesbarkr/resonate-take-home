@@ -3,15 +3,13 @@ import { db } from "@/lib/db/client";
 import {
   appointmentTypes,
   appointments,
-  conversations,
-  feedback,
   patients,
   providers,
   staffAlerts,
 } from "@/lib/db/schema";
 import { listRecentConversations } from "@/lib/domain/conversation-service";
 
-export function getUpcomingAppointments(days = 7) {
+function getUpcomingAppointments(days = 7) {
   const now = new Date().toISOString();
   const until = new Date(Date.now() + days * 86_400_000).toISOString();
 
@@ -45,7 +43,7 @@ export function getUpcomingAppointments(days = 7) {
     .all();
 }
 
-export function getOpenAlerts() {
+function getOpenAlerts() {
   return db
     .select({
       id: staffAlerts.id,
@@ -74,43 +72,10 @@ export function acknowledgeAlert(alertId: string) {
     .run();
 }
 
-export function getFeedbackSummary() {
-  const rows = db
-    .select({
-      id: feedback.id,
-      rating: feedback.rating,
-      comment: feedback.comment,
-      createdAt: feedback.createdAt,
-      conversationId: feedback.conversationId,
-      patientName: patients.fullName,
-    })
-    .from(feedback)
-    .leftJoin(conversations, eq(feedback.conversationId, conversations.id))
-    .leftJoin(patients, eq(conversations.patientId, patients.id))
-    .orderBy(desc(feedback.createdAt))
-    .all();
-
-  const positive = rows.filter((row) => row.rating > 0).length;
-  const negative = rows.filter((row) => row.rating < 0).length;
-  const comments = rows.filter((row) => row.comment).slice(0, 8);
-
-  return {
-    total: rows.length,
-    positive,
-    negative,
-    satisfaction:
-      rows.length === 0
-        ? null
-        : Math.round((positive / rows.length) * 100),
-    comments,
-  };
-}
-
 export function getDashboardData() {
   return {
     appointments: getUpcomingAppointments(7),
     alerts: getOpenAlerts(),
     conversations: listRecentConversations(10),
-    feedback: getFeedbackSummary(),
   };
 }

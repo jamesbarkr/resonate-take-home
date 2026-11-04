@@ -20,7 +20,7 @@ import {
   setConversationPatient,
   setConversationStatus,
 } from "@/lib/domain/conversation-service";
-import { toSafeToolError } from "@/lib/domain/errors";
+import { DomainError, toSafeToolError } from "@/lib/domain/errors";
 import { patientService } from "@/lib/domain/patient-service";
 import {
   getPracticeInfoForTopic,
@@ -110,6 +110,33 @@ function appointmentSummaryWithLabel(
 export function createAgentTools(conversationId: string) {
   ensureConversation(conversationId);
 
+  async function allowedPatientIds(): Promise<Set<string>> {
+    const patientId = getConversationPatientId(conversationId);
+    if (!patientId) return new Set();
+    const household = await patientService.listHousehold(patientId);
+    return new Set(household.map((member) => member.id));
+  }
+
+  async function assertPatientAccess(patientId: string): Promise<void> {
+    const allowed = await allowedPatientIds();
+    if (!allowed.has(patientId)) {
+      throw new DomainError(
+        "FORBIDDEN",
+        "I can only access records for the patient verified in this conversation.",
+      );
+    }
+  }
+
+  async function assertAppointmentAccess(
+    appointmentId: string,
+  ): Promise<void> {
+    const patientId =
+      await schedulingService.getAppointmentPatientId(appointmentId);
+    if (patientId) {
+      await assertPatientAccess(patientId);
+    }
+  }
+
   return {
     find_patient: tool({
       description:
@@ -126,7 +153,7 @@ export function createAgentTools(conversationId: string) {
             };
           }
 
-          if (matches.length === 1 && matches[0].matchedOn.name) {
+          if (matches.length === 1) {
             setConversationPatient(conversationId, matches[0].patient.id);
           }
 
@@ -166,7 +193,7 @@ export function createAgentTools(conversationId: string) {
 
     get_availability: tool({
       description:
-        "Search real appointment availability for a date range. Use this for every scheduling request, including subjective dates like 'later next week' after resolving them to explicit YYYY-MM-DD dates. Never invent a slot. Returns ISO UTC timestamps that must be passed unchanged to hold_slot or book_appointment.",
+        "Search real appointment availability for a date range. Use this for every scheduling request, including subjective dates like 'later next week' after resolving them to explicit YYYY-MM-DD dates. For family or multi-patient requests, search each person's appointment type separately. Never invent a slot. Returns ISO UTC timestamps that must be passed unchanged to hold_slot or book_appointment.",
       inputSchema: getAvailabilitySchema,
       execute: async (input) =>
         runTool(conversationId, "get_availability", input, async () => {
@@ -212,6 +239,7 @@ export function createAgentTools(conversationId: string) {
       inputSchema: bookInputSchema,
       execute: async (input) =>
         runTool(conversationId, "book_appointment", input, async () => {
+          await assertPatientAccess(input.patientId);
           const summary = await schedulingService.book({
             ...input,
             conversationId,
@@ -235,6 +263,7 @@ export function createAgentTools(conversationId: string) {
       inputSchema: rescheduleInputSchema,
       execute: async (input) =>
         runTool(conversationId, "reschedule_appointment", input, async () => {
+          await assertAppointmentAccess(input.appointmentId);
           const summary = await schedulingService.reschedule({
             ...input,
             conversationId,
@@ -257,6 +286,7 @@ export function createAgentTools(conversationId: string) {
       inputSchema: cancelInputSchema,
       execute: async (input) =>
         runTool(conversationId, "cancel_appointment", input, async () => {
+          await assertAppointmentAccess(input.appointmentId);
           const summary = await schedulingService.cancel({
             appointmentId: input.appointmentId,
             conversationId,
@@ -275,6 +305,7 @@ export function createAgentTools(conversationId: string) {
       inputSchema: listAppointmentsSchema,
       execute: async (input) =>
         runTool(conversationId, "list_appointments", input, async () => {
+          await assertPatientAccess(input.patientId);
           const summaries = await schedulingService.listForPatient(
             input.patientId,
             input.includePast,
@@ -307,6 +338,9 @@ export function createAgentTools(conversationId: string) {
       inputSchema: notifyInputSchema,
       execute: async (input) =>
         runTool(conversationId, "notify_staff", input, async () => {
+          if (input.patientId) {
+            await assertPatientAccess(input.patientId);
+          }
           const alert = await staffNotificationService.notify({
             ...input,
             conversationId,

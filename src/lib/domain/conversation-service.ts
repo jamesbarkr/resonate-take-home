@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { isTextUIPart, type UIMessage } from "ai";
 import { db } from "@/lib/db/client";
 import {
@@ -25,7 +25,7 @@ export function ensureConversation(conversationId: string) {
     .run();
 }
 
-export function touchConversation(conversationId: string) {
+function touchConversation(conversationId: string) {
   db.update(conversations)
     .set({ updatedAt: new Date().toISOString() })
     .where(eq(conversations.id, conversationId))
@@ -60,7 +60,7 @@ function messageText(message: UIMessage): string {
     .trim();
 }
 
-export function appendMessage(input: {
+function appendMessage(input: {
   id: string;
   conversationId: string;
   role: "user" | "assistant" | "system" | "tool";
@@ -199,18 +199,4 @@ export function getConversationPatientId(conversationId: string) {
     .from(conversations)
     .where(eq(conversations.id, conversationId))
     .get()?.patientId ?? null;
-}
-
-export function findOpenAlert(conversationId: string, kind: string) {
-  return db
-    .select()
-    .from(staffAlerts)
-    .where(
-      and(
-        eq(staffAlerts.conversationId, conversationId),
-        eq(staffAlerts.kind, kind as "emergency" | "escalation" | "callback"),
-        eq(staffAlerts.status, "open"),
-      ),
-    )
-    .get();
 }

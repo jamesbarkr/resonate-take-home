@@ -1,14 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
-  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_NAMES,
   sessionCookieOptions,
 } from "@/lib/auth/session";
+import { isStaffSite } from "@/lib/site";
 
 export async function POST(request: NextRequest) {
-  const response = NextResponse.redirect(new URL("/", request.url), 303);
-  response.cookies.set(SESSION_COOKIE_NAME, "", {
-    ...sessionCookieOptions(0),
-    maxAge: 0,
-  });
+  const destination = isStaffSite() ? "/login" : "/";
+  const response = NextResponse.redirect(
+    new URL(destination, request.url),
+    303,
+  );
+
+  for (const name of SESSION_COOKIE_NAMES) {
+    response.cookies.set(name, "", sessionCookieOptions(0));
+  }
+
   return response;
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSession } from "@/lib/auth/session";
+import { requirePatientSite } from "@/lib/auth/page-guards";
+import { getPatientSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,8 @@ const reasons = [
 ];
 
 export default async function HomePage() {
-  const session = await getSession();
+  await requirePatientSite();
+  const session = await getPatientSession();
 
   return (
     <main className="flex min-h-screen flex-col bg-slate-50">
@@ -84,19 +86,10 @@ export default async function HomePage() {
             <a className="hover:text-brand-700" href="#visit">
               Visit
             </a>
-            {session?.role === "staff" ? (
-              <Link className="hover:text-brand-700" href="/staff">
-                Staff console
-              </Link>
-            ) : (
-              <Link className="hover:text-brand-700" href="/login?role=staff">
-                Staff
-              </Link>
-            )}
           </nav>
 
           <div className="flex items-center gap-2">
-            {session?.role === "patient" ? (
+            {session ? (
               <>
                 <Link
                   className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-brand-500 hover:text-brand-700"
@@ -116,7 +109,7 @@ export default async function HomePage() {
             ) : (
               <Link
                 className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-brand-500 hover:text-brand-700"
-                href="/login?role=patient"
+                href="/login"
               >
                 Patient portal
               </Link>
@@ -155,7 +148,7 @@ export default async function HomePage() {
               </Link>
               <Link
                 className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:border-brand-500 hover:text-brand-700"
-                href={session?.role === "patient" ? "/portal" : "/login?role=patient"}
+                href={session ? "/portal" : "/login"}
               >
                 Patient portal
               </Link>
@@ -201,7 +194,7 @@ export default async function HomePage() {
                 </div>
                 <Link
                   className="text-xs font-semibold text-brand-600 hover:text-brand-700"
-                  href="/login?role=patient"
+                  href="/login"
                 >
                   Sign in
                 </Link>
@@ -398,11 +391,8 @@ export default async function HomePage() {
             <a className="hover:text-brand-700" href="#services">
               Services
             </a>
-            <Link className="hover:text-brand-700" href="/login?role=patient">
+            <Link className="hover:text-brand-700" href="/login">
               Patient portal
-            </Link>
-            <Link className="hover:text-brand-700" href="/login?role=staff">
-              Staff sign in
             </Link>
             <span className="text-slate-600">
               © 2026 Lakeside Family Dental
