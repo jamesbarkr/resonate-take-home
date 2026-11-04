@@ -170,6 +170,7 @@ See `.env.example`. The important ones:
 | Command | What it does |
 |---------|--------------|
 | `npm run dev` | Start the Next.js dev server. |
+| `npm run dev:clean` | Clear `.next` and start the dev server (use if Fast Refresh loops). |
 | `npm run build` | Production build. |
 | `npm run start` | Run the production build. |
 | `npm run typecheck` | TypeScript, no emit. |
@@ -179,6 +180,17 @@ See `.env.example`. The important ones:
 | `npm run db:reset` | Delete, migrate, and reseed the local DB. |
 | `npm test` | Run the Vitest unit, integration, and scenario suite. |
 | `npm run test:e2e` | Run Playwright browser and axe accessibility checks. |
+
+### Troubleshooting
+
+If the chat page reloads continuously or the dev overlay shows repeated Fast
+Refresh rebuilds, the generated `.next` cache is stale:
+
+```bash
+npm run dev:clean
+```
+
+This removes `.next` and starts a fresh dev server.
 
 ## Testing
 
