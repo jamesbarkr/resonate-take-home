@@ -1,22 +1,17 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { loginErrorUrl, safeRedirectPath } from "@/lib/auth/redirect";
+import { safeEqual } from "@/lib/auth/safe-equal";
 import {
   createSessionToken,
-  SESSION_COOKIE_NAME,
+  STAFF_SESSION_COOKIE_NAME,
   sessionCookieOptions,
 } from "@/lib/auth/session";
-
-function safeEqual(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return (
-    leftBuffer.length === rightBuffer.length &&
-    timingSafeEqual(leftBuffer, rightBuffer)
-  );
-}
+import { wrongSiteResponse } from "@/lib/site";
 
 export async function POST(request: NextRequest) {
+  const rejected = wrongSiteResponse("staff");
+  if (rejected) return rejected;
+
   const form = await request.formData();
   const email = String(form.get("email") ?? "").trim();
   const password = String(form.get("password") ?? "");
@@ -34,7 +29,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(
       loginErrorUrl(
         request.url,
-        "staff",
         "That email and password combination is not recognized.",
         next,
       ),
@@ -47,7 +41,7 @@ export async function POST(request: NextRequest) {
     303,
   );
   response.cookies.set(
-    SESSION_COOKIE_NAME,
+    STAFF_SESSION_COOKIE_NAME,
     createSessionToken({
       role: "staff",
       email: staffEmail,

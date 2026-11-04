@@ -7,12 +7,9 @@ import {
   type UIMessage,
 } from "ai";
 import { useChat } from "@ai-sdk/react";
-import { conversationCompletion } from "@/lib/chat/feedback";
+import ReactMarkdown from "react-markdown";
 import {
-  confirmationReplies,
-  slotSelectionMessage,
-} from "@/lib/chat/quick-replies";
-import {
+  memo,
   type FormEvent,
   type KeyboardEvent,
   useEffect,
@@ -20,6 +17,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ToolName } from "@/lib/agent/tool-contracts";
 
 const QUICK_REPLIES = [
   "I'd like to book a cleaning",
@@ -29,7 +27,7 @@ const QUICK_REPLIES = [
   "I'd like to book for my family",
 ];
 
-const TOOL_LABELS: Record<string, string> = {
+const TOOL_LABELS: Record<ToolName, string> = {
   find_patient: "Checking patient record",
   create_patient: "Registering new patient",
   get_availability: "Checking real availability",
@@ -59,6 +57,18 @@ function messageText(message: UIMessage): string {
     .trim();
 }
 
+const AssistantMarkdown = memo(function AssistantMarkdown({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <div className="text-sm leading-relaxed [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-200 [&_blockquote]:pl-3 [&_blockquote]:italic [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em] [&_em]:italic [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:font-semibold [&_li]:mb-1 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:mb-2 [&_p]:whitespace-pre-wrap [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-4">
+      <ReactMarkdown>{text}</ReactMarkdown>
+    </div>
+  );
+});
+
 function AppointmentCard({ value }: { value: JsonRecord }) {
   const startsAtLabel =
     typeof value.startsAtLabel === "string" ? value.startsAtLabel : null;
@@ -85,63 +95,16 @@ function AppointmentCard({ value }: { value: JsonRecord }) {
   );
 }
 
-function SlotList({
-  value,
-  onSelect,
-  disabled,
-}: {
-  value: unknown;
-  onSelect: (text: string) => void;
-  disabled: boolean;
-}) {
-  if (!Array.isArray(value)) return null;
-  const slots = value
-    .map((slot) => asRecord(slot))
-    .filter((slot): slot is JsonRecord => slot !== null)
-    .slice(0, 4);
-
-  if (slots.length === 0) return null;
-
-  return (
-    <ul className="mt-3 space-y-2">
-      {slots.map((slot, index) => {
-        const label =
-          typeof slot.label === "string"
-            ? slot.label
-            : "Available appointment";
-        return (
-          <li key={`${String(slot.startsAt ?? index)}`}>
-            <button
-              aria-label={`Choose ${label}`}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm font-medium text-slate-800 hover:border-brand-500 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={disabled}
-              onClick={() => onSelect(slotSelectionMessage(label))}
-              type="button"
-            >
-              {label}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function ToolPart({
-  part,
-  onSelectOption,
-  disabled,
-}: {
-  part: UIMessage["parts"][number];
-  onSelectOption: (text: string) => void;
-  disabled: boolean;
-}) {
+function ToolPart({ part }: { part: UIMessage["parts"][number] }) {
   if (!isToolUIPart(part)) return null;
 
   const toolName = part.type.startsWith("tool-")
     ? part.type.slice("tool-".length)
     : "tool";
-  const label = TOOL_LABELS[toolName] ?? "Working on your request";
+  const label =
+    toolName in TOOL_LABELS
+      ? TOOL_LABELS[toolName as ToolName]
+      : "Working on your request";
   const output =
     part.state === "output-available" ? asRecord(part.output) : null;
   const failed = output?.ok === false;
@@ -197,91 +160,7 @@ function ToolPart({
             ))}
         </div>
       ) : null}
-      {output?.slots ? (
-        <SlotList
-          disabled={disabled}
-          onSelect={onSelectOption}
-          value={output.slots}
-        />
-      ) : null}
     </div>
-  );
-}
-
-function ConversationFeedback({
-  messageId,
-  onContinue,
-}: {
-  messageId?: string;
-  onContinue: () => void;
-}) {
-  const [rating, setRating] = useState<number | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-
-  async function submit(value: number) {
-    if (rating !== null) return;
-    setRating(value);
-    setSubmitted(true);
-    try {
-      await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messageId, rating: value }),
-      });
-    } catch {
-      // Feedback is non-critical; keep the UI quiet if it fails.
-    }
-  }
-
-  return (
-    <section
-      aria-labelledby="conversation-feedback-heading"
-      className="rounded-3xl border border-brand-100 bg-white p-5 shadow-sm"
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
-        Conversation complete
-      </p>
-      <h2
-        className="mt-1 text-lg font-semibold text-brand-900"
-        id="conversation-feedback-heading"
-      >
-        How was this experience?
-      </h2>
-      <p className="mt-1 text-sm text-slate-600">
-        Your feedback helps the practice improve the virtual front desk.
-      </p>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {submitted ? (
-          <p className="text-sm font-medium text-emerald-700" role="status">
-            Thanks for the feedback.
-          </p>
-        ) : (
-          <>
-            <button
-              className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
-              onClick={() => submit(1)}
-              type="button"
-            >
-              👍 Helpful
-            </button>
-            <button
-              className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
-              onClick={() => submit(-1)}
-              type="button"
-            >
-              👎 Not quite
-            </button>
-          </>
-        )}
-        <button
-          className="rounded-full px-3 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700"
-          onClick={onContinue}
-          type="button"
-        >
-          Continue chatting
-        </button>
-      </div>
-    </section>
   );
 }
 
@@ -292,27 +171,10 @@ export function ChatShell({ patientName }: { patientName?: string }) {
   );
   const { messages, sendMessage, status, error, stop } = useChat({ transport });
   const [input, setInput] = useState("");
-  const [ended, setEnded] = useState(false);
-  const [dismissedCompletionId, setDismissedCompletionId] = useState<
-    string | null
-  >(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const busy = status === "submitted" || status === "streaming";
-  const completion = conversationCompletion(messages);
-  const lastAssistantId = [...messages]
-    .reverse()
-    .find((message) => message.role === "assistant")?.id;
-  const feedbackMessageId = ended ? lastAssistantId : completion?.messageId;
-  const showFeedback =
-    !busy &&
-    (ended ||
-      (completion !== null && completion.messageId !== dismissedCompletionId));
-  const confirmation = confirmationReplies(messages);
-  const showConfirmation =
-    !busy && !ended && !showFeedback && confirmation !== null;
-
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -320,7 +182,7 @@ export function ChatShell({ patientName }: { patientName?: string }) {
       container.scrollTop = container.scrollHeight;
     });
     return () => cancelAnimationFrame(frame);
-  }, [messages, status, ended, showFeedback, showConfirmation]);
+  }, [messages, status]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -330,25 +192,7 @@ export function ChatShell({ patientName }: { patientName?: string }) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
     setInput("");
-    setEnded(false);
     void sendMessage({ text: trimmed });
-  }
-
-  function finishConversation() {
-    setEnded(true);
-    setDismissedCompletionId(null);
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    });
-  }
-
-  function continueConversation() {
-    setEnded(false);
-    setDismissedCompletionId(completion?.messageId ?? null);
-    inputRef.current?.focus();
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -416,7 +260,7 @@ export function ChatShell({ patientName }: { patientName?: string }) {
             ) : (
               <a
                 className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
-                href="/login?role=patient"
+                href="/login"
               >
                 Sign in
               </a>
@@ -507,15 +351,17 @@ export function ChatShell({ patientName }: { patientName?: string }) {
                     </p>
                   ) : null}
                   {text ? (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {text}
-                    </p>
+                    isUser ? (
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {text}
+                      </p>
+                    ) : (
+                      <AssistantMarkdown text={text} />
+                    )
                   ) : null}
                   {message.parts.map((part, index) => (
                     <ToolPart
-                      disabled={busy}
                       key={`${message.id}-${part.type}-${index}`}
-                      onSelectOption={submitMessage}
                       part={part}
                     />
                   ))}
@@ -523,29 +369,6 @@ export function ChatShell({ patientName }: { patientName?: string }) {
               </div>
             );
           })}
-
-          {showConfirmation && confirmation ? (
-            <div
-              aria-label="Quick replies"
-              className="flex flex-wrap gap-2"
-              role="group"
-            >
-              <button
-                className="rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 hover:border-brand-500"
-                onClick={() => submitMessage(confirmation.yes)}
-                type="button"
-              >
-                {confirmation.yes}
-              </button>
-              <button
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400"
-                onClick={() => submitMessage(confirmation.no)}
-                type="button"
-              >
-                {confirmation.no}
-              </button>
-            </div>
-          ) : null}
 
           {busy ? (
             <div className="flex justify-start">
@@ -560,14 +383,6 @@ export function ChatShell({ patientName }: { patientName?: string }) {
                 </p>
               </div>
             </div>
-          ) : null}
-
-          {showFeedback ? (
-            <ConversationFeedback
-              key={feedbackMessageId ?? "manual-finish"}
-              messageId={feedbackMessageId}
-              onContinue={continueConversation}
-            />
           ) : null}
 
           {error ? (
@@ -626,21 +441,6 @@ export function ChatShell({ patientName }: { patientName?: string }) {
                 Send
               </button>
             )}
-          </div>
-          <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-1">
-            <p className="text-[11px] text-slate-600">
-              Please don&apos;t share more personal information than needed.
-              This demo uses synthetic patient data.
-            </p>
-            {messages.length > 0 && !ended && !busy ? (
-              <button
-                className="shrink-0 text-[11px] font-semibold text-brand-600 hover:text-brand-700"
-                onClick={finishConversation}
-                type="button"
-              >
-                Finish chat
-              </button>
-            ) : null}
           </div>
         </form>
       </main>

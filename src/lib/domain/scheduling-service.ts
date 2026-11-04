@@ -671,6 +671,10 @@ export class SqliteSchedulingService implements SchedulingService {
     ).map(toSummary);
   }
 
+  async getAppointmentPatientId(appointmentId: string): Promise<string | null> {
+    return getAppointmentRecord(appointmentId)?.patientId ?? null;
+  }
+
   private getSummary(id: string): AppointmentSummary {
     const record = getAppointmentSummaryRecord(id);
     if (!record) {

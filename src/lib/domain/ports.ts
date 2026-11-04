@@ -110,6 +110,7 @@ export interface SchedulingService {
     patientId: string,
     includePast: boolean,
   ): Promise<AppointmentSummary[]>;
+  getAppointmentPatientId(appointmentId: string): Promise<string | null>;
 }
 
 export interface StaffNotificationService {

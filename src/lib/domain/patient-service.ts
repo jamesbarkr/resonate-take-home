@@ -10,7 +10,7 @@ import {
   listPatientsInHousehold,
 } from "@/lib/repositories/patient-repository";
 
-function normalizePhone(phone: string): string {
+export function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 

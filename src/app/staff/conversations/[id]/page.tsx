@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { notFound } from "next/navigation";
+import { requireStaffPage } from "@/lib/auth/page-guards";
 import { getConversationDetail } from "@/lib/domain/conversation-service";
 import { formatPracticeDateTime } from "@/lib/domain/time";
 
@@ -11,10 +11,7 @@ export default async function ConversationDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getSession();
-  if (session?.role !== "staff") {
-    redirect("/login?role=staff&next=/staff");
-  }
+  await requireStaffPage();
 
   const { id } = await params;
   const detail = getConversationDetail(id);

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ChatShell } from "@/components/chat/chat-shell";
-import { getSession } from "@/lib/auth/session";
+import { requirePatientSite } from "@/lib/auth/page-guards";
+import { getPatientSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ChatPage() {
-  const session = await getSession();
-  const patientName = session?.role === "patient" ? session.name : undefined;
-
-  return <ChatShell patientName={patientName} />;
+  await requirePatientSite();
+  const session = await getPatientSession();
+  return <ChatShell patientName={session?.name} />;
 }

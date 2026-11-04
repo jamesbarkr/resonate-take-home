@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { requirePatientPage } from "@/lib/auth/page-guards";
 import { patientService } from "@/lib/domain/patient-service";
 import { schedulingService } from "@/lib/domain/scheduling-service";
 import { formatPracticeDateTime } from "@/lib/domain/time";
+import type { AppointmentStatus } from "@/lib/domain/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,16 +13,20 @@ export const metadata: Metadata = {
   title: "Patient portal | Lakeside Family Dental",
 };
 
+const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  booked: "Booked",
+  cancelled: "Cancelled",
+  completed: "Completed",
+  no_show: "No-show",
+};
+
 export default async function PortalPage() {
-  const session = await getSession();
-  if (session?.role !== "patient") {
-    redirect("/login?role=patient&next=/portal");
-  }
+  const session = await requirePatientPage();
 
   const patient = await patientService.getById(session.patientId);
   if (!patient) {
     redirect(
-      `/login?role=patient&error=${encodeURIComponent(
+      `/login?error=${encodeURIComponent(
         "We could not find that patient record. Please sign in again.",
       )}`,
     );
@@ -156,7 +161,8 @@ export default async function PortalPage() {
                       ) : null}
                     </div>
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">
-                      {appointment.status}
+                      {APPOINTMENT_STATUS_LABELS[appointment.status] ??
+                        appointment.status}
                     </span>
                   </div>
                   <p className="mt-3 text-xs text-slate-500">

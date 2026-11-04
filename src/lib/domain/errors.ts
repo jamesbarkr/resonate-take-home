@@ -8,6 +8,7 @@ export type DomainErrorCode =
   | "APPOINTMENT_NOT_FOUND"
   | "APPOINTMENT_NOT_EDITABLE"
   | "IDEMPOTENCY_CONFLICT"
+  | "FORBIDDEN"
   | "INVALID_INPUT";
 
 export class DomainError extends Error {

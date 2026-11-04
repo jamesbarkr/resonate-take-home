@@ -2,14 +2,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import { loginErrorUrl, safeRedirectPath } from "@/lib/auth/redirect";
 import {
   createSessionToken,
-  SESSION_COOKIE_NAME,
+  PATIENT_SESSION_COOKIE_NAME,
   sessionCookieOptions,
 } from "@/lib/auth/session";
+import { normalizePhone } from "@/lib/domain/patient-service";
+import { wrongSiteResponse } from "@/lib/site";
 import { findPatientsByPhoneAndDob } from "@/lib/repositories/patient-repository";
 
 export async function POST(request: NextRequest) {
+  const rejected = wrongSiteResponse("patient");
+  if (rejected) return rejected;
+
   const form = await request.formData();
-  const phone = String(form.get("phone") ?? "").replace(/\D/g, "");
+  const phone = normalizePhone(String(form.get("phone") ?? ""));
   const dateOfBirth = String(form.get("dateOfBirth") ?? "").trim();
   const next = safeRedirectPath(
     String(form.get("next") ?? ""),
@@ -20,7 +25,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(
       loginErrorUrl(
         request.url,
-        "patient",
         "Enter a valid phone number and date of birth.",
         next,
       ),
@@ -35,7 +39,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(
       loginErrorUrl(
         request.url,
-        "patient",
         "We couldn't match that phone number and date of birth. Check the details or start a chat as a new patient.",
         next,
       ),
@@ -48,7 +51,7 @@ export async function POST(request: NextRequest) {
     303,
   );
   response.cookies.set(
-    SESSION_COOKIE_NAME,
+    PATIENT_SESSION_COOKIE_NAME,
     createSessionToken({
       role: "patient",
       patientId: patient.id,

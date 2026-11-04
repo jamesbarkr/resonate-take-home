@@ -99,6 +99,12 @@ describe("agent tools", () => {
     });
     expect(hold.ok).toBe(true);
 
+    await execute(tools, "find_patient", {
+      fullName: "David Johnson",
+      phone: "6175550101",
+      dateOfBirth: "1985-04-12",
+    });
+
     const booking = await execute(tools, "book_appointment", {
       patientId: "pat_david",
       providerId: slots[0].providerId,
@@ -124,6 +130,12 @@ describe("agent tools", () => {
       providerId: string;
       startsAt: string;
     }>;
+
+    await execute(tools, "find_patient", {
+      fullName: "Maria Lopez",
+      phone: "6175550102",
+      dateOfBirth: "1990-11-30",
+    });
 
     const booking = await execute(tools, "book_appointment", {
       patientId: "pat_maria",
@@ -185,9 +197,39 @@ describe("agent tools", () => {
     expect(alert.notified).toBe(true);
   });
 
+  it("rejects access to an unverified patient or appointment", async () => {
+    const tools = createAgentTools("conv_tools_forbidden");
+
+    const list = await execute(tools, "list_appointments", {
+      patientId: "pat_david",
+    });
+    expect(list.ok).toBe(false);
+    expect(list.code).toBe("FORBIDDEN");
+
+    const reschedule = await execute(tools, "reschedule_appointment", {
+      appointmentId: "appt_david_cleaning",
+      newStartsAt: "2030-01-01T14:00:00.000Z",
+      confirmedByPatient: true,
+    });
+    expect(reschedule.ok).toBe(false);
+    expect(reschedule.code).toBe("FORBIDDEN");
+
+    const cancel = await execute(tools, "cancel_appointment", {
+      appointmentId: "appt_david_cleaning",
+      confirmedByPatient: true,
+    });
+    expect(cancel.ok).toBe(false);
+    expect(cancel.code).toBe("FORBIDDEN");
+  });
+
   it("returns safe errors for invalid bookings", async () => {
     const tools = createAgentTools("conv_tools_error");
     const { start } = nextWeek();
+    await execute(tools, "find_patient", {
+      fullName: "David Johnson",
+      phone: "6175550101",
+      dateOfBirth: "1985-04-12",
+    });
     const result = await execute(tools, "book_appointment", {
       patientId: "pat_david",
       providerId: "prov_patel",
@@ -202,6 +244,11 @@ describe("agent tools", () => {
 
   it("notifies staff and records an emergency alert", async () => {
     const tools = createAgentTools("conv_tools_alert");
+    await execute(tools, "find_patient", {
+      fullName: "David Johnson",
+      phone: "6175550101",
+      dateOfBirth: "1985-04-12",
+    });
     const result = await execute(tools, "notify_staff", {
       patientId: "pat_david",
       kind: "emergency",
